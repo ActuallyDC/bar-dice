@@ -7,6 +7,7 @@ import {
 } from "../game/reducer";
 import { describeScore, scoreHand } from "../game/score";
 import type { GameMode } from "../game/types";
+import { modeLabel } from "../game/modeLabel";
 import { Button, Heading, ScreenShell, Subtle } from "./ui";
 import { Scoreboard } from "./Scoreboard";
 import { DiceTray } from "./DiceTray";
@@ -130,7 +131,7 @@ function ModeBadge({ mode }: { mode: GameMode }) {
           : "bg-bar-ember/15 text-bar-ember border-bar-ember/40",
       ].join(" ")}
     >
-      {mode === "easy" ? "Easy" : "Advanced"}
+      {modeLabel(mode)}
     </span>
   );
 }

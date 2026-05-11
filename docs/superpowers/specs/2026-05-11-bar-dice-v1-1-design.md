@@ -185,18 +185,30 @@ function renderFinaleSeries(playerId: string, log: string[]): string {
 
 ## 8. Tiebreaker order preservation
 
-Both **elim tiebreaker** (multiple tied losers re-rolling) and **finale tiebreaker** (2 finalists re-rolling) must preserve the original entry order when listing participants for re-roll.
+Both **elim tiebreaker** (multiple tied losers re-rolling) and **finale tiebreaker** (2 finalists re-rolling) must preserve the **Round 1 turn order** (the one chosen on the Turn Order screen) when listing participants for re-roll.
 
-### 8.1 Implementation
+### 8.1 Current behaviour vs target
 
-- Locate the reducer cases that initialise a tiebreaker `poolOrder` (or equivalent participant list).
-- Replace whatever order is used today with: `participants.sort((a, b) => playerById(a).entryIndex - playerById(b).entryIndex)`.
-- `entryIndex` is already on `PlayerSlot` (per `Scoreboard.tsx`).
+- Current `startRollOffPool` (`reducer.ts` line 171) calls `entryOrderIds(state, tiedIds)`, which sorts by `entryIndex` (typing order). This is wrong: tied players should re-roll in the same order they rolled in the round that produced the tie — i.e., the chosen `state.turnOrder`.
+- Target: filter `state.turnOrder` to the tied ids, preserving turn-order positions.
 
-### 8.2 Tests
+### 8.2 Implementation
 
-- Reducer test (elim tiebreaker): players A, B, C, D with entryIndex 0..3. Tied losers are C and A (in that registration order in the tied set). Assert that after `START_TIEBREAKER` (or whichever action), the participants roll in order A, then C.
-- Reducer test (finale tiebreaker): same shape, two-finalist case.
+In `reducer.ts`, replace inside `startRollOffPool`:
+
+```ts
+// before
+poolOrder: entryOrderIds(state, tiedIds),
+// after
+poolOrder: state.turnOrder.filter((id) => tiedIds.includes(id)),
+```
+
+`entryOrderIds` itself is **not** removed — leave it; it's still useful for future callers. If a grep shows zero remaining call sites at the end of v1.1, delete in a follow-up.
+
+### 8.3 Tests
+
+- Reducer test (elim tiebreaker): 4 players A, B, C, D. Configure `turnOrder = [D, C, B, A]` (e.g. via "Highest Roll" producing that order). Drive an elim round to a tied loser pool of `{A, C}`. Assert that after `ADVANCE_FROM_SUMMARY` from the `rollOffNeeded` summary, `state.poolOrder` is `[C, A]` (turn-order respected), **not** `[A, C]` (entry order).
+- Reducer test (finale tiebreaker): 2 finalists with `turnOrder = [B, A]`. Drive a finale game to a tie. Assert `poolOrder` for the roll-off is `[B, A]`.
 
 ---
 

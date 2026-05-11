@@ -87,26 +87,17 @@ export function Tally({ onBack }: Props) {
             {rows.map((r) => (
               <li
                 key={r.key}
-                className="rounded-2xl bg-bar-panel border border-bar-line p-3 flex flex-col gap-2"
+                className="rounded-2xl bg-bar-panel border border-bar-line p-3 flex flex-col gap-3"
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-bar-ink">
-                    {r.displayName}
-                  </span>
-                  <span
-                    className={[
-                      "rounded-full px-3 py-1 text-sm font-bold border",
-                      r.shotsOwed > 0
-                        ? "bg-bar-ember/20 text-bar-ember border-bar-ember/40"
-                        : "bg-bar-good/15 text-bar-good border-bar-good/30",
-                    ].join(" ")}
-                  >
-                    {r.shotsOwed} {r.shotsOwed === 1 ? "shot" : "shots"}
-                  </span>
+                <span className="font-semibold text-bar-ink">{r.displayName}</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <Stat label="Games" value={r.gamesLost} tone={r.gamesLost > 0 ? "amber" : "mute"} />
+                  <Stat
+                    label="Shots"
+                    value={r.shotsOwed}
+                    tone={r.shotsOwed > 0 ? "ember" : "good"}
+                  />
                 </div>
-                <Subtle>
-                  {r.gamesPlayed} {r.gamesPlayed === 1 ? "game" : "games"} played
-                </Subtle>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant="secondary"
@@ -180,5 +171,35 @@ export function Tally({ onBack }: Props) {
         onCancel={() => setConfirmClearAll(false)}
       />
     </>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "good" | "amber" | "ember" | "mute";
+}) {
+  const colors: Record<typeof tone, string> = {
+    good: "bg-bar-good/10 text-bar-good border-bar-good/30",
+    amber: "bg-bar-amber/10 text-bar-amber border-bar-amber/40",
+    ember: "bg-bar-ember/15 text-bar-ember border-bar-ember/40",
+    mute: "bg-bar-panel2 text-bar-mute border-bar-line",
+  };
+  return (
+    <div
+      className={[
+        "rounded-xl border px-3 py-2 flex items-baseline justify-between",
+        colors[tone],
+      ].join(" ")}
+    >
+      <span className="text-xs uppercase tracking-wider font-semibold opacity-80">
+        {label}
+      </span>
+      <span className="text-2xl font-bold font-mono tabular-nums">{value}</span>
+    </div>
   );
 }

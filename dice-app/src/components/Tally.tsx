@@ -32,7 +32,7 @@ export function Tally({ onBack }: Props) {
       ...roster,
       players: { ...roster.players, [key]: { ...p, shotsOwed: 0 } },
     };
-    applyMutation(next, `Settled ${p.displayName}'s tab. Undo (5s)`);
+    applyMutation(next, `Settled ${p.displayName}'s tab.`);
     setConfirmSettleKey(null);
   }
 
@@ -42,7 +42,7 @@ export function Tally({ onBack }: Props) {
     const players = { ...roster.players };
     delete players[key];
     const next: Roster = { ...roster, players };
-    applyMutation(next, `Removed ${p.displayName}. Undo (5s)`);
+    applyMutation(next, `Removed ${p.displayName}.`);
     setConfirmRemoveKey(null);
   }
 
@@ -52,7 +52,7 @@ export function Tally({ onBack }: Props) {
       players[k] = { ...p, shotsOwed: 0 };
     }
     const next: Roster = { ...roster, players };
-    applyMutation(next, `Cleared all tabs. Undo (5s)`);
+    applyMutation(next, `Cleared all tabs.`);
     setConfirmClearAll(false);
   }
 

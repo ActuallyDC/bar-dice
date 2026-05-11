@@ -36,7 +36,7 @@ export function ResultModal({
       participants.map((p) => p.displayName),
       loser.displayName,
     );
-    applyMutation(next, `${loser.displayName} now owes a shot. Undo (5s)`);
+    applyMutation(next, `${loser.displayName} now owes a shot.`);
     // intentionally only run once per mount key
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mountKey]);

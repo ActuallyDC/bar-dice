@@ -101,6 +101,7 @@ export function UndoProvider({ children }: { children: ReactNode }) {
       <UndoToast
         visible={undo !== null}
         label={undo?.label ?? ""}
+        expiresAt={undo?.expiresAt}
         onUndo={handleUndo}
         onDismiss={handleDismiss}
       />

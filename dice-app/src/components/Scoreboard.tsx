@@ -121,7 +121,9 @@ function PlayerRow({
 }
 
 export function renderFinaleSeries(playerId: string, log: readonly string[]): string {
-  const slots = log.map((winnerId) => (winnerId === playerId ? "W" : "L"));
+  const slots: ("W" | "L" | "_")[] = log.map((winnerId) =>
+    winnerId === playerId ? "W" : "L",
+  );
   while (slots.length < 3) slots.push("_");
   return slots.slice(0, 3).join(" ");
 }

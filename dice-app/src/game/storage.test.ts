@@ -76,29 +76,27 @@ describe("ensureRosterPlayer", () => {
 });
 
 describe("applyGameResult", () => {
-  it("bumps gamesPlayed for everyone and shotsOwed (N-1) + gamesLost for the loser", () => {
+  it("bumps gamesPlayed for everyone and shotsOwed (N) + gamesLost for the loser", () => {
     const fixed = new Date("2026-05-09T12:00:00Z");
     const r = applyGameResult(emptyRoster(), ["Ana", "Bob", "Steve"], "Bob", fixed);
     expect(r.players.ana.gamesPlayed).toBe(1);
     expect(r.players.ana.shotsOwed).toBe(0);
     expect(r.players.ana.gamesLost).toBe(0);
     expect(r.players.bob.gamesPlayed).toBe(1);
-    expect(r.players.bob.shotsOwed).toBe(2);
+    expect(r.players.bob.shotsOwed).toBe(3);
     expect(r.players.bob.gamesLost).toBe(1);
     expect(r.players.bob.lastLossAt).toBe(fixed.toISOString());
     expect(r.players.steve.shotsOwed).toBe(0);
     expect(r.players.steve.gamesLost).toBe(0);
   });
 
-  it("scales shotsOwed with player count across multiple games", () => {
+  it("scales shots by full participant count (v1.2 rule)", () => {
     let r = emptyRoster();
-    // 4-player game, Bob loses → +3 shots, +1 games-lost.
     r = applyGameResult(r, ["Ana", "Bob", "Steve", "Cleo"], "Bob");
-    expect(r.players.bob.shotsOwed).toBe(3);
+    expect(r.players.bob.shotsOwed).toBe(4);
     expect(r.players.bob.gamesLost).toBe(1);
-    // 3-player game, Bob loses → +2 shots, +1 games-lost.
     r = applyGameResult(r, ["Ana", "Bob", "Steve"], "Bob");
-    expect(r.players.bob.shotsOwed).toBe(5);
+    expect(r.players.bob.shotsOwed).toBe(7);
     expect(r.players.bob.gamesLost).toBe(2);
   });
 
@@ -106,11 +104,11 @@ describe("applyGameResult", () => {
     const r1 = applyGameResult(emptyRoster(), ["Ana", "Bob"], "Ana");
     const r2 = applyGameResult(r1, ["Ana", "Bob", "Steve"], "Steve");
     expect(r2.players.ana.gamesPlayed).toBe(2);
-    expect(r2.players.ana.shotsOwed).toBe(1);
+    expect(r2.players.ana.shotsOwed).toBe(2);
     expect(r2.players.bob.gamesPlayed).toBe(2);
     expect(r2.players.bob.shotsOwed).toBe(0);
     expect(r2.players.steve.gamesPlayed).toBe(1);
-    expect(r2.players.steve.shotsOwed).toBe(2);
+    expect(r2.players.steve.shotsOwed).toBe(3);
   });
 
   it("treats name-key collisions as the same player", () => {
@@ -118,7 +116,7 @@ describe("applyGameResult", () => {
     const r2 = applyGameResult(r1, ["bob ", "Ana"], "bob ");
     expect(Object.keys(r2.players).sort()).toEqual(["ana", "bob"]);
     expect(r2.players.bob.gamesPlayed).toBe(2);
-    expect(r2.players.bob.shotsOwed).toBe(2);
+    expect(r2.players.bob.shotsOwed).toBe(4);
   });
 
   it("defaults gamesLost to 0 when reading a roster shape that predates the field", () => {

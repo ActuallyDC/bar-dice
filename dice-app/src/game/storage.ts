@@ -181,7 +181,7 @@ export function applyGameResult(
       [k]: {
         ...next.players[k],
         shotsOwed:
-          next.players[k].shotsOwed + (participantsDisplayNames.length - 1),
+          next.players[k].shotsOwed + participantsDisplayNames.length,
         gamesLost: next.players[k].gamesLost + 1,
         lastLossAt: now.toISOString(),
       },

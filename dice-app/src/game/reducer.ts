@@ -67,6 +67,7 @@ export interface GameState {
 
   loserId: string | null;
   finished: boolean;
+  resultApplied: boolean;
 }
 
 export type GameAction =
@@ -82,6 +83,7 @@ export type GameAction =
   | { type: "STAY" }
   | { type: "COMMIT_TURN" }
   | { type: "ADVANCE_FROM_SUMMARY" }
+  | { type: "MARK_RESULT_APPLIED" }
   | { type: "RESET" };
 
 const PLACEHOLDER_HAND: Hand = [1, 1, 1, 1, 1];
@@ -114,6 +116,7 @@ export function makeInitialState(): GameState {
     summary: null,
     loserId: null,
     finished: false,
+    resultApplied: false,
   };
 }
 
@@ -426,6 +429,11 @@ export function reducer(state: GameState, action: GameAction): GameState {
 
     case "ADVANCE_FROM_SUMMARY":
       return handleAdvanceFromSummary(state);
+
+    case "MARK_RESULT_APPLIED": {
+      if (state.resultApplied) return state;
+      return { ...state, resultApplied: true };
+    }
 
     default:
       return state;

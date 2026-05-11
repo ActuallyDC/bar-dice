@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { applyGameResult, nameKey } from "../game/storage";
 import type { PlayerSlot } from "../game/types";
 import { useRoster } from "./UndoProvider";
@@ -7,6 +7,8 @@ import { Button } from "./ui";
 interface Props {
   loserId: string;
   participants: PlayerSlot[];
+  resultApplied: boolean;
+  onResultApplied: () => void;
   onViewTally: () => void;
   onNewGame: () => void;
   onSamePlayersAgain: () => void;
@@ -15,20 +17,16 @@ interface Props {
 export function ResultModal({
   loserId,
   participants,
+  resultApplied,
+  onResultApplied,
   onViewTally,
   onNewGame,
   onSamePlayersAgain,
 }: Props) {
   const { roster, applyMutation } = useRoster();
-  const appliedKeyRef = useRef<string | null>(null);
-
-  // The "applied key" identifies which game-result this modal mount belongs to.
-  // We mutate exactly once per mount.
-  const mountKey = `${loserId}|${participants.map((p) => p.id).join(",")}`;
 
   useEffect(() => {
-    if (appliedKeyRef.current === mountKey) return;
-    appliedKeyRef.current = mountKey;
+    if (resultApplied) return;
     const loser = participants.find((p) => p.id === loserId);
     if (!loser) return;
     const next = applyGameResult(
@@ -36,10 +34,11 @@ export function ResultModal({
       participants.map((p) => p.displayName),
       loser.displayName,
     );
-    applyMutation(next, `${loser.displayName} now owes a shot.`);
-    // intentionally only run once per mount key
+    applyMutation(next, `${loser.displayName} now owes a shot.`, "game-result");
+    onResultApplied();
+    // intentionally guarded by resultApplied; do not include roster/etc. in deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mountKey]);
+  }, [resultApplied, loserId]);
 
   const loser = participants.find((p) => p.id === loserId);
   const loserDisplayName = loser?.displayName ?? "Unknown";

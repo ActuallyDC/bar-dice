@@ -18,12 +18,15 @@ interface UndoState {
   expiresAt: number;
   /** Token to allow the toast to know which mutation it belongs to. */
   token: number;
+  source: "game-result" | "tally-action" | "other";
 }
 
 interface UndoContextValue {
   roster: Roster;
   /** Apply a roster mutation, persist immediately, show an undo toast. */
-  applyMutation: (next: Roster, label: string) => void;
+  applyMutation: (next: Roster, label: string, source?: UndoState["source"]) => void;
+  /** Dismiss the undo toast only if it belongs to the given source. */
+  dismissUndoIfSource: (source: UndoState["source"]) => void;
   /** Clear the roster outright (for tests). Persists. */
   setRoster: (r: Roster) => void;
 }
@@ -48,7 +51,7 @@ export function UndoProvider({ children }: { children: ReactNode }) {
   useEffect(() => clearTimer, [clearTimer]);
 
   const applyMutation = useCallback(
-    (next: Roster, label: string) => {
+    (next: Roster, label: string, source: UndoState["source"] = "other") => {
       // Snapshot the *current* roster (pre-mutation) for undo.
       const snapshot = roster;
       // Persist & swap.
@@ -59,13 +62,26 @@ export function UndoProvider({ children }: { children: ReactNode }) {
       const token = tokenRef.current;
       clearTimer();
       const expiresAt = Date.now() + UNDO_TIMEOUT_MS;
-      setUndo({ snapshot, label, expiresAt, token });
+      setUndo({ snapshot, label, expiresAt, token, source });
       timerRef.current = window.setTimeout(() => {
         setUndo((cur) => (cur && cur.token === token ? null : cur));
         timerRef.current = null;
       }, UNDO_TIMEOUT_MS);
     },
     [roster, clearTimer],
+  );
+
+  const dismissUndoIfSource = useCallback(
+    (source: UndoState["source"]) => {
+      setUndo((cur) => {
+        if (cur && cur.source === source) {
+          clearTimer();
+          return null;
+        }
+        return cur;
+      });
+    },
+    [clearTimer],
   );
 
   const handleUndo = useCallback(() => {
@@ -90,9 +106,10 @@ export function UndoProvider({ children }: { children: ReactNode }) {
     () => ({
       roster,
       applyMutation,
+      dismissUndoIfSource,
       setRoster: setRosterImperative,
     }),
-    [roster, applyMutation, setRosterImperative],
+    [roster, applyMutation, dismissUndoIfSource, setRosterImperative],
   );
 
   return (

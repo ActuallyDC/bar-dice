@@ -107,6 +107,8 @@ function AppInner() {
         <ResultModal
           loserId={gameState.loserId}
           participants={lineup.slots}
+          resultApplied={gameState.resultApplied}
+          onResultApplied={() => dispatch({ type: "MARK_RESULT_APPLIED" })}
           onViewTally={() => setScreen({ kind: "tally", from: "result" })}
           onNewGame={handleNewGame}
           onSamePlayersAgain={handleSamePlayersAgain}

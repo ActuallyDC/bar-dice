@@ -456,6 +456,37 @@ describe("finaleGameLog", () => {
   });
 });
 
+describe("resultApplied", () => {
+  it("MARK_RESULT_APPLIED sets the flag", () => {
+    const s = makeInitialState();
+    expect(s.resultApplied).toBe(false);
+    const next = reducer(s, { type: "MARK_RESULT_APPLIED" });
+    expect(next.resultApplied).toBe(true);
+  });
+
+  it("is idempotent when already true", () => {
+    let s = reducer(makeInitialState(), { type: "MARK_RESULT_APPLIED" });
+    const ref = s;
+    s = reducer(s, { type: "MARK_RESULT_APPLIED" });
+    expect(s.resultApplied).toBe(true);
+    expect(s).toBe(ref);
+  });
+
+  it("RESET clears the flag", () => {
+    const flagged = reducer(makeInitialState(), { type: "MARK_RESULT_APPLIED" });
+    const reset = reducer(flagged, { type: "RESET" });
+    expect(reset.resultApplied).toBe(false);
+  });
+
+  it("START clears the flag", () => {
+    const flagged = reducer(makeInitialState(), { type: "MARK_RESULT_APPLIED" });
+    const p1: PlayerSlot = { id: "p1", displayName: "Ana", nameKey: "ana", setupRoll: 6, entryIndex: 0 };
+    const p2: PlayerSlot = { id: "p2", displayName: "Bob", nameKey: "bob", setupRoll: 1, entryIndex: 1 };
+    const started = reducer(flagged, { type: "START", players: [p1, p2], turnOrder: ["p1", "p2"], mode: "advanced" });
+    expect(started.resultApplied).toBe(false);
+  });
+});
+
 describe("tiebreaker order", () => {
   it("uses turnOrder, not entryIndex, when starting an elim roll-off", () => {
     // 4 players entered A,B,C,D (entryIndex 0..3) but turnOrder is reversed.

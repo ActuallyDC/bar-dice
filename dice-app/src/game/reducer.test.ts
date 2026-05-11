@@ -215,8 +215,8 @@ describe("reducer — STAY is valid in both Easy and Advanced", () => {
   });
 });
 
-describe("reducer — Tie triggers a roll-off in entry order", () => {
-  it("entry-order pool is used; roll-offs are single-roll (elim path)", () => {
+describe("reducer — Tie triggers a roll-off (elim path)", () => {
+  it("roll-off uses only the tied players; single-roll format", () => {
     // 3-player elim round so we exercise the elim roll-off branch (2-player
     // games start directly in the finale, which is covered separately).
     let s = startGame("easy", ["A", "B", "C"]);
@@ -228,7 +228,7 @@ describe("reducer — Tie triggers a roll-off in entry order", () => {
     expect(s.summary?.tiedIds?.sort()).toEqual(["a", "b"]);
     s = reducer(s, { type: "ADVANCE_FROM_SUMMARY" });
     expect(s.inRollOff).toBe(true);
-    expect(s.poolOrder).toEqual(["a", "b"]); // entry order, only the tied players
+    expect(s.poolOrder).toEqual(["a", "b"]); // only the tied players
 
     // Single-roll roll-off: ROLL_1 should land directly in "rolled2" with no holds.
     s = reducer(s, { type: "ROLL_1", dice: asHand([6, 6, 6, 6, 6]) });

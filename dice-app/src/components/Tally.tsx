@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Roster } from "../game/types";
 import { useRoster } from "./UndoProvider";
 import { Button, Heading, ScreenShell, Subtle } from "./ui";
@@ -9,10 +9,16 @@ interface Props {
 }
 
 export function Tally({ onBack }: Props) {
-  const { roster, applyMutation } = useRoster();
+  const { roster, applyMutation, dismissUndoIfSource } = useRoster();
   const [confirmSettleKey, setConfirmSettleKey] = useState<string | null>(null);
   const [confirmRemoveKey, setConfirmRemoveKey] = useState<string | null>(null);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
+
+  useEffect(() => {
+    dismissUndoIfSource("game-result");
+    // single-shot on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const rows = useMemo(() => {
     return Object.entries(roster.players)
@@ -32,7 +38,7 @@ export function Tally({ onBack }: Props) {
       ...roster,
       players: { ...roster.players, [key]: { ...p, shotsOwed: 0 } },
     };
-    applyMutation(next, `Settled ${p.displayName}'s tab.`);
+    applyMutation(next, `Settled ${p.displayName}'s tab.`, "tally-action");
     setConfirmSettleKey(null);
   }
 
@@ -42,7 +48,7 @@ export function Tally({ onBack }: Props) {
     const players = { ...roster.players };
     delete players[key];
     const next: Roster = { ...roster, players };
-    applyMutation(next, `Removed ${p.displayName}.`);
+    applyMutation(next, `Removed ${p.displayName}.`, "tally-action");
     setConfirmRemoveKey(null);
   }
 
@@ -52,7 +58,7 @@ export function Tally({ onBack }: Props) {
       players[k] = { ...p, shotsOwed: 0 };
     }
     const next: Roster = { ...roster, players };
-    applyMutation(next, `Cleared all tabs.`);
+    applyMutation(next, `Cleared all tabs.`, "tally-action");
     setConfirmClearAll(false);
   }
 

@@ -1,4 +1,5 @@
 import type { GameMode } from "../game/types";
+import { modeLabel } from "../game/modeLabel";
 
 interface Props {
   value: GameMode;
@@ -22,13 +23,13 @@ export function ModeToggle({ value, onChange }: Props) {
             aria-checked={selected}
             onClick={() => onChange(m)}
             className={[
-              "tap-target focus-ring rounded-xl px-4 py-3 font-semibold capitalize transition-colors",
+              "tap-target focus-ring rounded-xl px-4 py-3 font-semibold transition-colors",
               selected
                 ? "bg-bar-amber text-black"
                 : "bg-transparent text-bar-ink/80 hover:text-bar-ink",
             ].join(" ")}
           >
-            {m}
+            {modeLabel(m)}
           </button>
         );
       })}

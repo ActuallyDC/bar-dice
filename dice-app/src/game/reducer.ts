@@ -174,7 +174,7 @@ function startRollOffPool(state: GameState, tiedIds: string[]): GameState {
   return {
     ...state,
     inRollOff: true,
-    poolOrder: entryOrderIds(state, tiedIds),
+    poolOrder: state.turnOrder.filter((id) => tiedIds.includes(id)),
     poolIndex: 0,
     poolResults: {},
     dice: PLACEHOLDER_HAND,

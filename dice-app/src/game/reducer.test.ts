@@ -455,3 +455,32 @@ describe("finaleGameLog", () => {
     expect(s.finaleGameLog).toEqual([]);
   });
 });
+
+describe("tiebreaker order", () => {
+  it("uses turnOrder, not entryIndex, when starting an elim roll-off", () => {
+    // 4 players entered A,B,C,D (entryIndex 0..3) but turnOrder is reversed.
+    let s = makeInitialState();
+    s = reducer(s, {
+      type: "START",
+      players: [p("a", 0), p("b", 1), p("c", 2), p("d", 3)],
+      turnOrder: ["d", "c", "b", "a"],
+      mode: "advanced",
+    });
+    // Force a summary with rollOffNeeded for a tied pair {a, c}.
+    s = {
+      ...s,
+      summary: {
+        kind: "rollOffNeeded",
+        context: s.context,
+        inRollOff: false,
+        poolPlayers: s.poolOrder,
+        poolResults: s.poolResults,
+        tiedIds: ["a", "c"],
+      },
+    };
+    s = reducer(s, { type: "ADVANCE_FROM_SUMMARY" });
+    // turnOrder is [d, c, b, a]; filter to {a, c} → [c, a].
+    expect(s.poolOrder).toEqual(["c", "a"]);
+    expect(s.inRollOff).toBe(true);
+  });
+});

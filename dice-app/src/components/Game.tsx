@@ -97,6 +97,7 @@ export function Game({ state, dispatch, onCancelGame }: Props) {
             onToggle={(i) => dispatch({ type: "TOGGLE_HOLD", index: i })}
             rollKey={turnKey}
             stayed={state.stayedThisTurn}
+            newlyMatched={state.newlyMatched}
           />
           {liveScore && (
             <p className="text-bar-ink font-mono text-base">

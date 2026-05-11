@@ -10,6 +10,7 @@ interface Props {
   /** Bumped each roll to retrigger the tumble animation per non-held die. */
   rollKey?: string | number;
   stayed?: boolean;
+  newlyMatched?: readonly [boolean, boolean, boolean, boolean, boolean];
 }
 
 export function DiceTray({
@@ -20,6 +21,7 @@ export function DiceTray({
   onToggle,
   rollKey = "",
   stayed = false,
+  newlyMatched,
 }: Props) {
   return (
     <div className="grid grid-cols-5 gap-2 justify-center">
@@ -34,6 +36,7 @@ export function DiceTray({
           size={56}
           rollKey={rollKey}
           stayed={stayed}
+          newlyMatched={newlyMatched?.[i] ?? false}
         />
       ))}
     </div>

@@ -534,6 +534,68 @@ describe("stayedThisTurn", () => {
   });
 });
 
+describe("newlyMatched", () => {
+  function startTwoPlayerAdvanced() {
+    const p1: PlayerSlot = {
+      id: "p1", displayName: "Ana", nameKey: "ana",
+      setupRoll: 6, entryIndex: 0,
+    };
+    const p2: PlayerSlot = {
+      id: "p2", displayName: "Bob", nameKey: "bob",
+      setupRoll: 1, entryIndex: 1,
+    };
+    return reducer(makeInitialState(), {
+      type: "START",
+      players: [p1, p2],
+      turnOrder: ["p1", "p2"],
+      mode: "advanced",
+    });
+  }
+
+  it("ROLL_2 marks dice that newly landed on the held face", () => {
+    let s = startTwoPlayerAdvanced();
+    s = reducer(s, { type: "ROLL_1", dice: [4, 4, 4, 2, 1] });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 0 });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 1 });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 2 });
+    // Held: indices 0,1,2 (all face 4). Re-roll 3 and 4 with [4, 2].
+    s = reducer(s, { type: "ROLL_2", dice: [9, 9, 9, 4, 2] as any });
+    expect(s.newlyMatched).toEqual([false, false, false, true, false]);
+    expect(s.held).toEqual([true, true, true, true, false]);
+  });
+
+  it("ROLL_2 with no held dice yields all-false newlyMatched", () => {
+    let s = startTwoPlayerAdvanced();
+    s = reducer(s, { type: "ROLL_1", dice: [1, 2, 3, 4, 5] });
+    // No holds — re-roll everything.
+    s = reducer(s, { type: "ROLL_2", dice: [6, 6, 6, 6, 6] });
+    expect(s.newlyMatched).toEqual([false, false, false, false, false]);
+  });
+
+  it("ROLL_1 clears newlyMatched", () => {
+    let s = startTwoPlayerAdvanced();
+    s = reducer(s, { type: "ROLL_1", dice: [4, 4, 4, 2, 1] });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 0 });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 1 });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 2 });
+    s = reducer(s, { type: "ROLL_2", dice: [9, 9, 9, 4, 2] as any });
+    expect(s.newlyMatched.some(Boolean)).toBe(true);
+    s = reducer(s, { type: "COMMIT_TURN" });
+    s = reducer(s, { type: "ROLL_1", dice: [1, 2, 3, 4, 5] });
+    expect(s.newlyMatched).toEqual([false, false, false, false, false]);
+  });
+
+  it("COMMIT_TURN clears newlyMatched", () => {
+    let s = startTwoPlayerAdvanced();
+    s = reducer(s, { type: "ROLL_1", dice: [4, 4, 4, 2, 1] });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 0 });
+    s = reducer(s, { type: "ROLL_2", dice: [9, 4, 1, 2, 3] as any });
+    expect(s.newlyMatched).toEqual([false, true, false, false, false]);
+    s = reducer(s, { type: "COMMIT_TURN" });
+    expect(s.newlyMatched).toEqual([false, false, false, false, false]);
+  });
+});
+
 describe("tiebreaker order", () => {
   it("uses turnOrder, not entryIndex, when starting an elim roll-off", () => {
     // 4 players entered A,B,C,D (entryIndex 0..3) but turnOrder is reversed.

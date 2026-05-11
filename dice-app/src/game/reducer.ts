@@ -69,6 +69,7 @@ export interface GameState {
   finished: boolean;
   resultApplied: boolean;
   stayedThisTurn: boolean;
+  newlyMatched: [boolean, boolean, boolean, boolean, boolean];
 }
 
 export type GameAction =
@@ -119,6 +120,7 @@ export function makeInitialState(): GameState {
     finished: false,
     resultApplied: false,
     stayedThisTurn: false,
+    newlyMatched: ALL_FALSE,
   };
 }
 
@@ -340,6 +342,7 @@ export function reducer(state: GameState, action: GameAction): GameState {
           turnPhase: "rolled2",
           awaitingFirstRoll: false,
           stayedThisTurn: false,
+          newlyMatched: ALL_FALSE,
         };
       }
       // Easy mode: precompute hold flags via easyHold.
@@ -352,6 +355,7 @@ export function reducer(state: GameState, action: GameAction): GameState {
           turnPhase: decision.stay ? "rolled2" : "rolled1",
           awaitingFirstRoll: false,
           stayedThisTurn: false,
+          newlyMatched: ALL_FALSE,
         };
       }
       // Advanced mode: nothing held by default.
@@ -362,6 +366,7 @@ export function reducer(state: GameState, action: GameAction): GameState {
         turnPhase: "rolled1",
         awaitingFirstRoll: false,
         stayedThisTurn: false,
+        newlyMatched: ALL_FALSE,
       };
     }
 
@@ -393,14 +398,35 @@ export function reducer(state: GameState, action: GameAction): GameState {
 
     case "ROLL_2": {
       if (state.turnPhase !== "rolled1") return state;
+      const prevHeld = state.held;
+      const heldFaceIdx = prevHeld.findIndex((h) => h);
+      const heldFace: DieValue | null =
+        heldFaceIdx >= 0 ? state.dice[heldFaceIdx] : null;
+
       const dice = state.dice.slice() as DieValue[];
       for (let i = 0; i < 5; i++) {
-        if (!state.held[i]) dice[i] = action.dice[i];
+        if (!prevHeld[i]) dice[i] = action.dice[i];
       }
+
+      const newlyMatched: [boolean, boolean, boolean, boolean, boolean] = [
+        false, false, false, false, false,
+      ];
+      const nextHeld = prevHeld.slice() as [boolean, boolean, boolean, boolean, boolean];
+      if (heldFace !== null) {
+        for (let i = 0; i < 5; i++) {
+          if (!prevHeld[i] && dice[i] === heldFace) {
+            newlyMatched[i] = true;
+            nextHeld[i] = true;
+          }
+        }
+      }
+
       return {
         ...state,
         dice: dice as unknown as Hand,
+        held: nextHeld,
         turnPhase: "rolled2",
+        newlyMatched,
       };
     }
 
@@ -425,6 +451,7 @@ export function reducer(state: GameState, action: GameAction): GameState {
           held: ALL_FALSE,
           awaitingFirstRoll: false,
           stayedThisTurn: false,
+          newlyMatched: ALL_FALSE,
         });
       }
       return {
@@ -436,6 +463,7 @@ export function reducer(state: GameState, action: GameAction): GameState {
         held: ALL_FALSE,
         awaitingFirstRoll: true,
         stayedThisTurn: false,
+        newlyMatched: ALL_FALSE,
       };
     }
 

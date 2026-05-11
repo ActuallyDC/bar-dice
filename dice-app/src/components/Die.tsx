@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, type TargetAndTransition, type Transition } from "framer-motion";
 import type { DieValue } from "../game/types";
 import { DieFace } from "./SetupDie";
 
@@ -14,6 +14,7 @@ interface Props {
   /** Bumped each roll to retrigger the tumble. */
   rollKey?: string | number;
   stayed?: boolean;
+  newlyMatched?: boolean;
 }
 
 export function Die({
@@ -25,6 +26,7 @@ export function Die({
   blank = false,
   rollKey = "",
   stayed = false,
+  newlyMatched = false,
 }: Props) {
   const cls = [
     "relative rounded-xl flex items-center justify-center select-none transition-colors",
@@ -34,17 +36,37 @@ export function Die({
     interactive ? "tap-target focus-ring cursor-pointer" : "cursor-default",
   ].join(" ");
 
-  const animateProps =
-    held && stayed
-      ? { rotate: 0, scale: [1, 1.08, 1] as number[] }
-      : held
-        ? { rotate: 0 }
-        : { rotate: [0, -22, 28, -20, 16, -10, 6, 0] };
+  let animateProps: TargetAndTransition;
+  let transition: Transition;
 
-  const transition =
-    held && stayed
-      ? { duration: 0.4, ease: "easeOut" as const }
-      : { duration: 1.2, ease: "easeOut" as const };
+  if (newlyMatched) {
+    animateProps = {
+      rotate: [0, -22, 28, -20, 16, -10, 6, 0],
+      boxShadow: [
+        "0 0 0 0 rgba(245, 191, 90, 0)",
+        "0 0 0 0 rgba(245, 191, 90, 0)",
+        "0 0 0 6px rgba(245, 191, 90, 0.55)",
+        "0 0 0 0 rgba(245, 191, 90, 0)",
+      ],
+    };
+    transition = {
+      rotate: { duration: 1.2, ease: "easeOut" },
+      boxShadow: {
+        duration: 1.8,
+        times: [0, 0.66, 0.85, 1],
+        ease: "easeOut",
+      },
+    };
+  } else if (held && stayed) {
+    animateProps = { rotate: 0, scale: [1, 1.08, 1] };
+    transition = { duration: 0.4, ease: "easeOut" };
+  } else if (held) {
+    animateProps = { rotate: 0 };
+    transition = { duration: 1.2, ease: "easeOut" };
+  } else {
+    animateProps = { rotate: [0, -22, 28, -20, 16, -10, 6, 0] };
+    transition = { duration: 1.2, ease: "easeOut" };
+  }
 
   const inner = (
     <motion.div

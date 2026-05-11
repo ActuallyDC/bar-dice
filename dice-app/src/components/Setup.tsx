@@ -1,11 +1,10 @@
 import { useState } from "react";
 import type { GameMode, PlayerSlot, Roster, TurnOrderOption } from "../game/types";
 import { GameSettings } from "./GameSettings";
-import { PlayerEntry } from "./PlayerEntry";
 import { TurnOrder } from "./TurnOrder";
 import { ConfirmModal } from "./ConfirmModal";
 
-type Step = "settings" | "entry" | "order";
+type Step = "settings" | "order";
 
 export interface SetupResult {
   slots: PlayerSlot[];
@@ -23,51 +22,23 @@ interface Props {
 
 export function Setup({ initialMode, roster, onComplete, onViewTally }: Props) {
   const [step, setStep] = useState<Step>("settings");
-  const [names, setNames] = useState<string[]>([]);
-  const [mode, setMode] = useState<GameMode>(initialMode);
   const [slots, setSlots] = useState<PlayerSlot[]>([]);
-  const [currentSlot, setCurrentSlot] = useState<number>(0);
+  const [mode, setMode] = useState<GameMode>(initialMode);
   const [option, setOption] = useState<TurnOrderOption>("highestRoll");
   const [confirmRestart, setConfirmRestart] = useState(false);
 
-  function handleStartFromSettings(submitted: string[]) {
-    setNames(submitted);
-    setSlots([]);
-    setCurrentSlot(0);
-    setStep("entry");
-  }
-
-  function handleSlotComplete(slot: PlayerSlot) {
-    setSlots((prev) => {
-      const next = prev.slice();
-      next[currentSlot] = slot;
-      return next;
-    });
-    if (currentSlot + 1 >= names.length) {
-      setStep("order");
-    } else {
-      setCurrentSlot(currentSlot + 1);
-    }
-  }
-
-  function handleEntryBack() {
-    if (currentSlot === 0) {
-      setStep("settings");
-    } else {
-      setCurrentSlot(currentSlot - 1);
-    }
+  function handleStartFromSettings(submitted: PlayerSlot[]) {
+    setSlots(submitted);
+    setStep("order");
   }
 
   function handleOrderBack() {
-    setCurrentSlot(names.length - 1);
-    setStep("entry");
+    setStep("settings");
   }
 
   function performRestart() {
     setStep("settings");
-    setNames([]);
     setSlots([]);
-    setCurrentSlot(0);
     setOption("highestRoll");
   }
 
@@ -85,24 +56,12 @@ export function Setup({ initialMode, roster, onComplete, onViewTally }: Props) {
     <>
       {step === "settings" && (
         <GameSettings
-          names={names}
-          onNamesChange={setNames}
+          initialRows={slots}
           mode={mode}
+          roster={roster}
           onModeChange={setMode}
           onStart={handleStartFromSettings}
           onViewTally={onViewTally}
-        />
-      )}
-      {step === "entry" && (
-        <PlayerEntry
-          slotIndex={currentSlot}
-          totalSlots={names.length}
-          completedSlots={slots}
-          roster={roster}
-          prefilledName={names[currentSlot]}
-          onBack={handleEntryBack}
-          onComplete={handleSlotComplete}
-          onRestart={() => setConfirmRestart(true)}
         />
       )}
       {step === "order" && (

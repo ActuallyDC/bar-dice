@@ -13,7 +13,7 @@ interface Props {
 }
 
 /**
- * Single d6 with a brief tumble animation. Used in PlayerEntry for the per-player setup roll.
+ * Single d6 with a brief tumble animation. Used in GameSettings for the inline per-player setup roll.
  * The parent owns the resulting value; this component just animates and reports completion.
  */
 export function SetupDie({ value, rollKey, onRollSettled, size = 88 }: Props) {

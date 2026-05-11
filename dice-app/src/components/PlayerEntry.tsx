@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DieValue, PlayerSlot, Roster } from "../game/types";
 import { nameKey } from "../game/storage";
-import { Button, ScreenShell, Subtle } from "./ui";
+import { Button, Heading, ScreenShell, Subtle } from "./ui";
 import { PlayerChip } from "./PlayerChip";
 import { SetupDie } from "./SetupDie";
 
@@ -10,6 +10,7 @@ interface Props {
   totalSlots: number;
   completedSlots: PlayerSlot[]; // entries already completed (may include the one at slotIndex if revisited)
   roster: Roster;
+  prefilledName?: string;
   onBack: () => void;
   onComplete: (slot: PlayerSlot) => void;
   onRestart: () => void;
@@ -21,13 +22,14 @@ export function PlayerEntry(props: Props) {
     totalSlots,
     completedSlots,
     roster,
+    prefilledName,
     onBack,
     onComplete,
     onRestart,
   } = props;
 
   const existing = completedSlots[slotIndex] ?? null;
-  const [name, setName] = useState<string>(existing?.displayName ?? "");
+  const [name, setName] = useState<string>(existing?.displayName ?? prefilledName ?? "");
   const [phase, setPhase] = useState<"idle" | "rolling" | "showing">("idle");
   const [rolledValue, setRolledValue] = useState<DieValue | null>(
     existing?.setupRoll ?? null,
@@ -50,7 +52,7 @@ export function PlayerEntry(props: Props) {
 
   // If the slotIndex changes (Back/Next), reset local state from existing.
   useEffect(() => {
-    setName(existing?.displayName ?? "");
+    setName(existing?.displayName ?? prefilledName ?? "");
     setRolledValue(existing?.setupRoll ?? null);
     setPhase("idle");
     setCountdown(0);
@@ -191,33 +193,39 @@ export function PlayerEntry(props: Props) {
         </section>
       )}
 
-      <section className="flex flex-col gap-2 mt-2">
-        <label htmlFor="player-name" className="font-semibold">
-          Name
-        </label>
-        <input
-          id="player-name"
-          autoFocus
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="words"
-          spellCheck={false}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="tap-target focus-ring w-full rounded-2xl bg-bar-panel2 border border-bar-line px-4 py-3 text-xl text-bar-ink"
-          placeholder="Player name"
-          aria-invalid={isDuplicate}
-        />
-        <div className="min-h-[1.5rem]">
-          {isDuplicate && (
-            <p className="text-sm text-bar-ember">
-              That name is already in this game
-            </p>
-          )}
-        </div>
-      </section>
+      {prefilledName != null ? (
+        <section className="flex flex-col gap-2 mt-2">
+          <Heading level={2}>{prefilledName}</Heading>
+        </section>
+      ) : (
+        <section className="flex flex-col gap-2 mt-2">
+          <label htmlFor="player-name" className="font-semibold">
+            Name
+          </label>
+          <input
+            id="player-name"
+            autoFocus
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="words"
+            spellCheck={false}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="tap-target focus-ring w-full rounded-2xl bg-bar-panel2 border border-bar-line px-4 py-3 text-xl text-bar-ink"
+            placeholder="Player name"
+            aria-invalid={isDuplicate}
+          />
+          <div className="min-h-[1.5rem]">
+            {isDuplicate && (
+              <p className="text-sm text-bar-ember">
+                That name is already in this game
+              </p>
+            )}
+          </div>
+        </section>
+      )}
 
-      {rosterChips.length > 0 && (
+      {prefilledName == null && rosterChips.length > 0 && (
         <section className="flex flex-col gap-2">
           <p className="text-xs uppercase tracking-wider text-bar-mute">
             From the bar

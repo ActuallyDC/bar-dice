@@ -23,19 +23,17 @@ interface Props {
 
 export function Setup({ initialMode, roster, onComplete, onViewTally }: Props) {
   const [step, setStep] = useState<Step>("settings");
-  const [countText, setCountText] = useState<string>("");
-  const [playerCount, setPlayerCount] = useState<number>(0);
+  const [names, setNames] = useState<string[]>([]);
   const [mode, setMode] = useState<GameMode>(initialMode);
   const [slots, setSlots] = useState<PlayerSlot[]>([]);
   const [currentSlot, setCurrentSlot] = useState<number>(0);
   const [option, setOption] = useState<TurnOrderOption>("highestRoll");
   const [confirmRestart, setConfirmRestart] = useState(false);
 
-  function handleNextFromSettings(count: number) {
-    setPlayerCount(count);
-    // Trim slots if user reduced count.
-    setSlots((prev) => prev.slice(0, count));
-    setCurrentSlot(Math.min(currentSlot, Math.max(0, count - 1)));
+  function handleStartFromSettings(submitted: string[]) {
+    setNames(submitted);
+    setSlots([]);
+    setCurrentSlot(0);
     setStep("entry");
   }
 
@@ -45,7 +43,7 @@ export function Setup({ initialMode, roster, onComplete, onViewTally }: Props) {
       next[currentSlot] = slot;
       return next;
     });
-    if (currentSlot + 1 >= playerCount) {
+    if (currentSlot + 1 >= names.length) {
       setStep("order");
     } else {
       setCurrentSlot(currentSlot + 1);
@@ -61,14 +59,13 @@ export function Setup({ initialMode, roster, onComplete, onViewTally }: Props) {
   }
 
   function handleOrderBack() {
-    setCurrentSlot(playerCount - 1);
+    setCurrentSlot(names.length - 1);
     setStep("entry");
   }
 
   function performRestart() {
     setStep("settings");
-    setCountText("");
-    setPlayerCount(0);
+    setNames([]);
     setSlots([]);
     setCurrentSlot(0);
     setOption("highestRoll");
@@ -88,20 +85,21 @@ export function Setup({ initialMode, roster, onComplete, onViewTally }: Props) {
     <>
       {step === "settings" && (
         <GameSettings
-          countText={countText}
-          onCountTextChange={setCountText}
+          names={names}
+          onNamesChange={setNames}
           mode={mode}
           onModeChange={setMode}
-          onNext={handleNextFromSettings}
+          onStart={handleStartFromSettings}
           onViewTally={onViewTally}
         />
       )}
       {step === "entry" && (
         <PlayerEntry
           slotIndex={currentSlot}
-          totalSlots={playerCount}
+          totalSlots={names.length}
           completedSlots={slots}
           roster={roster}
+          prefilledName={names[currentSlot]}
           onBack={handleEntryBack}
           onComplete={handleSlotComplete}
           onRestart={() => setConfirmRestart(true)}

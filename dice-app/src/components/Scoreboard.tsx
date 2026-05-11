@@ -74,9 +74,6 @@ function PlayerRow({
   state: GameState;
 }) {
   const result = state.poolResults[player.id];
-  const losses = state.finaleLosses[player.id] ?? 0;
-  const opponent = state.finalists.find((id) => id !== player.id);
-  const wins = opponent ? state.finaleLosses[opponent] ?? 0 : 0;
   const status = (() => {
     if (state.finished) {
       if (state.loserId === player.id) return { label: "Loser", tone: "ember" as const };
@@ -85,7 +82,7 @@ function PlayerRow({
     }
     if (isSafe) return { label: "Safe", tone: "good" as const };
     if (inFinale && isFinalist) {
-      return { label: renderFinaleSeries(wins, losses), tone: "amber" as const };
+      return { label: renderFinaleSeries(player.id, state.finaleGameLog), tone: "amber" as const };
     }
     if (isLeader) return { label: "Current leader", tone: "good" as const };
     return null;
@@ -123,11 +120,8 @@ function PlayerRow({
   );
 }
 
-function renderFinaleSeries(wins: number, losses: number): string {
-  // Best-of-three: render up to 3 slots, filling W's first then L's, then "_".
-  const slots: string[] = [];
-  for (let i = 0; i < wins; i++) slots.push("W");
-  for (let i = 0; i < losses; i++) slots.push("L");
+export function renderFinaleSeries(playerId: string, log: readonly string[]): string {
+  const slots = log.map((winnerId) => (winnerId === playerId ? "W" : "L"));
   while (slots.length < 3) slots.push("_");
   return slots.slice(0, 3).join(" ");
 }

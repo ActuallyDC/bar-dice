@@ -68,6 +68,7 @@ export interface GameState {
   loserId: string | null;
   finished: boolean;
   resultApplied: boolean;
+  stayedThisTurn: boolean;
 }
 
 export type GameAction =
@@ -117,6 +118,7 @@ export function makeInitialState(): GameState {
     loserId: null,
     finished: false,
     resultApplied: false,
+    stayedThisTurn: false,
   };
 }
 
@@ -337,6 +339,7 @@ export function reducer(state: GameState, action: GameAction): GameState {
           held: ALL_FALSE,
           turnPhase: "rolled2",
           awaitingFirstRoll: false,
+          stayedThisTurn: false,
         };
       }
       // Easy mode: precompute hold flags via easyHold.
@@ -348,6 +351,7 @@ export function reducer(state: GameState, action: GameAction): GameState {
           held: decision.held as [boolean, boolean, boolean, boolean, boolean],
           turnPhase: decision.stay ? "rolled2" : "rolled1",
           awaitingFirstRoll: false,
+          stayedThisTurn: false,
         };
       }
       // Advanced mode: nothing held by default.
@@ -357,6 +361,7 @@ export function reducer(state: GameState, action: GameAction): GameState {
         held: ALL_FALSE,
         turnPhase: "rolled1",
         awaitingFirstRoll: false,
+        stayedThisTurn: false,
       };
     }
 
@@ -378,7 +383,12 @@ export function reducer(state: GameState, action: GameAction): GameState {
 
     case "STAY": {
       if (state.turnPhase !== "rolled1") return state;
-      return { ...state, turnPhase: "rolled2" };
+      return {
+        ...state,
+        held: [true, true, true, true, true],
+        turnPhase: "rolled2",
+        stayedThisTurn: true,
+      };
     }
 
     case "ROLL_2": {
@@ -414,6 +424,7 @@ export function reducer(state: GameState, action: GameAction): GameState {
           dice: PLACEHOLDER_HAND,
           held: ALL_FALSE,
           awaitingFirstRoll: false,
+          stayedThisTurn: false,
         });
       }
       return {
@@ -424,6 +435,7 @@ export function reducer(state: GameState, action: GameAction): GameState {
         dice: PLACEHOLDER_HAND,
         held: ALL_FALSE,
         awaitingFirstRoll: true,
+        stayedThisTurn: false,
       };
     }
 

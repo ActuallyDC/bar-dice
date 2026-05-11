@@ -13,6 +13,7 @@ interface Props {
   blank?: boolean;
   /** Bumped each roll to retrigger the tumble. */
   rollKey?: string | number;
+  stayed?: boolean;
 }
 
 export function Die({
@@ -23,6 +24,7 @@ export function Die({
   size = 64,
   blank = false,
   rollKey = "",
+  stayed = false,
 }: Props) {
   const cls = [
     "relative rounded-xl flex items-center justify-center select-none transition-colors",
@@ -32,9 +34,17 @@ export function Die({
     interactive ? "tap-target focus-ring cursor-pointer" : "cursor-default",
   ].join(" ");
 
-  const animateProps = held
-    ? { rotate: 0 }
-    : { rotate: [0, -22, 28, -20, 16, -10, 6, 0] };
+  const animateProps =
+    held && stayed
+      ? { rotate: 0, scale: [1, 1.08, 1] as number[] }
+      : held
+        ? { rotate: 0 }
+        : { rotate: [0, -22, 28, -20, 16, -10, 6, 0] };
+
+  const transition =
+    held && stayed
+      ? { duration: 0.4, ease: "easeOut" as const }
+      : { duration: 1.2, ease: "easeOut" as const };
 
   const inner = (
     <motion.div
@@ -43,7 +53,7 @@ export function Die({
       key={rollKey}
       initial={false}
       animate={animateProps}
-      transition={{ duration: 1.2, ease: "easeOut" }}
+      transition={transition}
     >
       <DieFace value={blank ? null : value} size={size} highlight={held} />
       {held && !blank && (

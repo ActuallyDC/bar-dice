@@ -487,6 +487,53 @@ describe("resultApplied", () => {
   });
 });
 
+describe("stayedThisTurn", () => {
+  function startTwoPlayer() {
+    const p1: PlayerSlot = {
+      id: "p1", displayName: "Ana", nameKey: "ana",
+      setupRoll: 6, entryIndex: 0,
+    };
+    const p2: PlayerSlot = {
+      id: "p2", displayName: "Bob", nameKey: "bob",
+      setupRoll: 1, entryIndex: 1,
+    };
+    return reducer(makeInitialState(), {
+      type: "START",
+      players: [p1, p2],
+      turnOrder: ["p1", "p2"],
+      mode: "advanced",
+    });
+  }
+
+  it("STAY sets all held flags true and stayedThisTurn=true", () => {
+    let s = startTwoPlayer();
+    s = reducer(s, { type: "ROLL_1", dice: [3, 3, 1, 2, 4] });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 0 });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 1 });
+    s = reducer(s, { type: "STAY" });
+    expect(s.stayedThisTurn).toBe(true);
+    expect(s.held).toEqual([true, true, true, true, true]);
+    expect(s.turnPhase).toBe("rolled2");
+  });
+
+  it("COMMIT_TURN clears stayedThisTurn", () => {
+    let s = startTwoPlayer();
+    s = reducer(s, { type: "ROLL_1", dice: [3, 3, 1, 2, 4] });
+    s = reducer(s, { type: "STAY" });
+    s = reducer(s, { type: "COMMIT_TURN" });
+    expect(s.stayedThisTurn).toBe(false);
+  });
+
+  it("ROLL_1 (next turn) leaves stayedThisTurn false", () => {
+    let s = startTwoPlayer();
+    s = reducer(s, { type: "ROLL_1", dice: [3, 3, 1, 2, 4] });
+    s = reducer(s, { type: "STAY" });
+    s = reducer(s, { type: "COMMIT_TURN" });
+    s = reducer(s, { type: "ROLL_1", dice: [1, 2, 3, 4, 5] });
+    expect(s.stayedThisTurn).toBe(false);
+  });
+});
+
 describe("tiebreaker order", () => {
   it("uses turnOrder, not entryIndex, when starting an elim roll-off", () => {
     // 4 players entered A,B,C,D (entryIndex 0..3) but turnOrder is reversed.

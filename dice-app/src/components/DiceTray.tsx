@@ -9,6 +9,7 @@ interface Props {
   onToggle?: (index: number) => void;
   /** Bumped each roll to retrigger the tumble animation per non-held die. */
   rollKey?: string | number;
+  stayed?: boolean;
 }
 
 export function DiceTray({
@@ -18,6 +19,7 @@ export function DiceTray({
   blank = false,
   onToggle,
   rollKey = "",
+  stayed = false,
 }: Props) {
   return (
     <div className="grid grid-cols-5 gap-2 justify-center">
@@ -31,6 +33,7 @@ export function DiceTray({
           onToggle={() => onToggle?.(i)}
           size={56}
           rollKey={rollKey}
+          stayed={stayed}
         />
       ))}
     </div>

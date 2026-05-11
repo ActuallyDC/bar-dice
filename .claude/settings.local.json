@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npm create *)",
+      "Bash(npm install *)",
+      "Bash(npx tailwindcss *)",
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(mkdir -p \"/c/Users/Admin/OneDrive/Claude Code Projects/Dice Web App/dice-app/.claude\")",
+      "Bash(mkdir -p \"/c/Users/Admin/OneDrive/Claude Code Projects/Dice Web App/.claude\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npm run *)",
+      "Bash(ls -la \"/c/Users/Admin/.claude/projects/C--Users-Admin-OneDrive-Claude-Code-Projects-Dice-Web-App/memory/\")",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}

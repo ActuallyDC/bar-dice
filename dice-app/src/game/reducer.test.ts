@@ -1,0 +1,400 @@
+import { describe, expect, it } from "vitest";
+import {
+  activePlayerId,
+  inGamePlayerCount,
+  makeInitialState,
+  reducer,
+  type GameAction,
+  type GameState,
+} from "./reducer";
+import { asHand } from "./score";
+import type { GameMode, Hand, PlayerSlot } from "./types";
+
+function players(names: string[]): PlayerSlot[] {
+  return names.map((n, i) => ({
+    id: n.toLowerCase(),
+    displayName: n,
+    nameKey: n.toLowerCase(),
+    setupRoll: ((i % 6) + 1) as 1 | 2 | 3 | 4 | 5 | 6,
+    entryIndex: i,
+  }));
+}
+
+function startGame(mode: GameMode, names: string[]): GameState {
+  const ps = players(names);
+  return reducer(makeInitialState(), {
+    type: "START",
+    players: ps,
+    turnOrder: ps.map((p) => p.id),
+    mode,
+  });
+}
+
+function dispatch(state: GameState, ...actions: GameAction[]): GameState {
+  return actions.reduce(reducer, state);
+}
+
+/** Apply a complete Easy-mode turn for the active player using preset roll dice. */
+function easyTurn(state: GameState, roll1: Hand, roll2: Hand): GameState {
+  let s = state;
+  s = reducer(s, { type: "ROLL_1", dice: roll1 });
+  if (s.turnPhase === "rolled1") {
+    s = reducer(s, { type: "ROLL_2", dice: roll2 });
+  }
+  s = reducer(s, { type: "COMMIT_TURN" });
+  return s;
+}
+
+/** Apply a complete Advanced-mode turn: hold pattern then re-roll. */
+function advancedTurn(
+  state: GameState,
+  roll1: Hand,
+  holdAfter1: boolean[],
+  roll2OrStay: { kind: "roll"; dice: Hand } | { kind: "stay" },
+): GameState {
+  let s = reducer(state, { type: "ROLL_1", dice: roll1 });
+  for (let i = 0; i < 5; i++) {
+    if (holdAfter1[i]) s = reducer(s, { type: "TOGGLE_HOLD", index: i });
+  }
+  if (roll2OrStay.kind === "stay") {
+    s = reducer(s, { type: "STAY" });
+  } else {
+    s = reducer(s, { type: "ROLL_2", dice: roll2OrStay.dice });
+  }
+  s = reducer(s, { type: "COMMIT_TURN" });
+  return s;
+}
+
+describe("reducer — START", () => {
+  it("sets up the elimination pool from turnOrder for 3+ players", () => {
+    const s = startGame("easy", ["Ana", "Bob", "Steve", "Tom"]);
+    expect(s.context.kind).toBe("elim");
+    expect(s.context.round).toBe(1);
+    expect(s.poolOrder).toEqual(["ana", "bob", "steve", "tom"]);
+    expect(activePlayerId(s)).toBe("ana");
+    expect(s.turnPhase).toBe("idle");
+    expect(s.awaitingFirstRoll).toBe(true);
+    expect(inGamePlayerCount(s)).toBe(4);
+  });
+
+  it("a 2-player game starts directly in the Best-of-3 finale", () => {
+    const s = startGame("easy", ["Ana", "Bob"]);
+    expect(s.context.kind).toBe("finale");
+    expect(s.context.gameNumber).toBe(1);
+    expect(s.finalists.sort()).toEqual(["ana", "bob"]);
+    expect(s.poolOrder).toEqual(["ana", "bob"]);
+    expect(s.finaleLosses).toEqual({ ana: 0, bob: 0 });
+    expect(s.safeIds).toEqual([]);
+  });
+
+  it("a 2-player game can be played to a Loser without stalling", () => {
+    let s = startGame("easy", ["Ana", "Bob"]);
+    // Ana wins game 1
+    s = easyTurn(s, asHand([6, 6, 6, 6, 6]), asHand([1, 1, 1, 1, 1])); // Ana → (5,6)
+    s = easyTurn(s, asHand([2, 3, 4, 5, 6]), asHand([2, 2, 2, 2, 2])); // Bob → ?
+    expect(s.summary?.kind).toBe("finaleResolved");
+    s = reducer(s, { type: "ADVANCE_FROM_SUMMARY" });
+    expect(s.context.gameNumber).toBe(2);
+    // Ana wins game 2 → Bob has 2 losses → game over
+    s = easyTurn(s, asHand([6, 6, 6, 6, 6]), asHand([1, 1, 1, 1, 1])); // Ana
+    s = easyTurn(s, asHand([2, 3, 4, 5, 6]), asHand([2, 2, 2, 2, 2])); // Bob
+    s = reducer(s, { type: "ADVANCE_FROM_SUMMARY" });
+    expect(s.finished).toBe(true);
+    expect(s.loserId).toBe("bob");
+  });
+});
+
+describe("reducer — Easy mode 5-player round picks the correct Safe player", () => {
+  it("the player with the highest hand becomes safe", () => {
+    let s = startGame("easy", ["A", "B", "C", "D", "E"]);
+    expect(activePlayerId(s)).toBe("a");
+    // A: roll1 [2,2,3,4,5] → easyHold holds the two 2s; roll2 fills [_,_,2,2,2] → (5,2)
+    s = easyTurn(s, asHand([2, 2, 3, 4, 5]), asHand([2, 2, 2, 2, 2])); // A → (5,2)
+    // B: roll1 [3,3,3,4,5] → holds the three 3s; roll2 fills weakly → ends as (3,3)
+    s = easyTurn(s, asHand([3, 3, 3, 4, 5]), asHand([2, 2, 2, 2, 2])); // B → (3,3)
+    // C: roll1 [1,1,6,6,5] → score (4,6), holds wilds+6s; roll2 fills pos4 with 6 → (5,6)
+    s = easyTurn(s, asHand([1, 1, 6, 6, 5]), asHand([6, 6, 6, 6, 6])); // C → (5,6)
+    // D: roll1 [2,3,4,5,6] → score (1,6), holds the 6; roll2 fills 0..3 with [2,2,2,2] → (1,6)
+    s = easyTurn(s, asHand([2, 3, 4, 5, 6]), asHand([2, 2, 2, 2, 2])); // D → (1,6)
+    // E: roll1 [2,2,3,4,5] → holds the 2s; roll2 fills weakly → (3,2)
+    s = easyTurn(s, asHand([2, 2, 3, 4, 5]), asHand([3, 4, 5, 3, 4])); // E → (3,2)
+    expect(s.summary).not.toBeNull();
+    expect(s.summary?.kind).toBe("elimResolved");
+    expect(s.summary?.winnerId).toBe("c");
+  });
+});
+
+describe("reducer — Advanced mode 5-player round picks the correct Safe player", () => {
+  it("respects player choice of holds", () => {
+    let s = startGame("advanced", ["A", "B", "C", "D", "E"]);
+    // A: rolls 2,2,3,4,5; holds the two 2s; rerolls to 6,6,6 → final 2,2,6,6,6 → score (3,6)
+    s = advancedTurn(
+      s,
+      asHand([2, 2, 3, 4, 5]),
+      [true, true, false, false, false],
+      { kind: "roll", dice: asHand([1, 1, 6, 6, 6]) },
+    );
+    // B: rolls 1,2,3,4,5; holds nothing; rerolls all to 4,4,4,4,4 → (5 with wild?? no: the wild is in pos 0 if reroll gave a 4 there) — actually reroll value position 0 = 4, so dice = 4,4,4,4,4 → (5,4)
+    s = advancedTurn(
+      s,
+      asHand([1, 2, 3, 4, 5]),
+      [false, false, false, false, false],
+      { kind: "roll", dice: asHand([4, 4, 4, 4, 4]) },
+    );
+    // C: stays after roll 1 with 3,3,3,3,3 → (5,3)
+    s = advancedTurn(
+      s,
+      asHand([3, 3, 3, 3, 3]),
+      [false, false, false, false, false],
+      { kind: "stay" },
+    );
+    // D: rolls 2,3,4,5,6 → holds the 6 → rerolls to 6,6,6,6 → final 6,6,6,6,6 → (5,6)
+    s = advancedTurn(
+      s,
+      asHand([2, 3, 4, 5, 6]),
+      [false, false, false, false, true],
+      { kind: "roll", dice: asHand([6, 6, 6, 6, 6]) },
+    );
+    // E: rolls 2,2,2,3,3 → holds the 3s → rerolls to 1,1,1 → final 1,1,1,3,3 → 3s with 3 wilds = (5,3)
+    s = advancedTurn(
+      s,
+      asHand([2, 2, 2, 3, 3]),
+      [false, false, false, true, true],
+      { kind: "roll", dice: asHand([1, 1, 1, 3, 3]) },
+    );
+    expect(s.summary?.kind).toBe("elimResolved");
+    expect(s.summary?.winnerId).toBe("d"); // D's (5,6) beats everyone
+  });
+});
+
+describe("reducer — Advanced mode: Easy auto-hold doesn't apply", () => {
+  it("dice are not pre-held in advanced mode", () => {
+    let s = startGame("advanced", ["A", "B"]);
+    s = reducer(s, { type: "ROLL_1", dice: asHand([1, 1, 5, 5, 6]) });
+    expect(s.held).toEqual([false, false, false, false, false]);
+    expect(s.turnPhase).toBe("rolled1");
+  });
+});
+
+describe("reducer — Easy mode: optimal hold is applied automatically", () => {
+  it("holds wilds and matching face after roll 1", () => {
+    let s = startGame("easy", ["A", "B"]);
+    s = reducer(s, { type: "ROLL_1", dice: asHand([1, 1, 5, 5, 6]) });
+    expect(s.held).toEqual([true, true, true, true, false]);
+    expect(s.turnPhase).toBe("rolled1");
+  });
+
+  it("skips roll 2 on a 5-of-a-kind from roll 1", () => {
+    let s = startGame("easy", ["A", "B"]);
+    s = reducer(s, { type: "ROLL_1", dice: asHand([6, 6, 6, 6, 6]) });
+    expect(s.turnPhase).toBe("rolled2");
+    expect(s.held).toEqual([true, true, true, true, true]);
+  });
+});
+
+describe("reducer — TOGGLE_HOLD only valid in Advanced rolled1", () => {
+  it("ignored in Easy mode", () => {
+    let s = startGame("easy", ["A", "B"]);
+    s = reducer(s, { type: "ROLL_1", dice: asHand([1, 1, 5, 5, 6]) });
+    const before = s.held;
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 0 });
+    expect(s.held).toBe(before);
+  });
+});
+
+describe("reducer — STAY is valid in both Easy and Advanced", () => {
+  it("Easy mode can STAY after roll 1 instead of taking roll 2", () => {
+    let s = startGame("easy", ["A", "B"]);
+    s = reducer(s, { type: "ROLL_1", dice: asHand([1, 1, 5, 5, 6]) });
+    expect(s.turnPhase).toBe("rolled1");
+    s = reducer(s, { type: "STAY" });
+    expect(s.turnPhase).toBe("rolled2");
+    // Score uses the dice from roll 1 unchanged.
+    s = reducer(s, { type: "COMMIT_TURN" });
+    expect(s.poolResults.a.score).toEqual({ count: 4, faceValue: 5 });
+  });
+});
+
+describe("reducer — Tie triggers a roll-off in entry order", () => {
+  it("entry-order pool is used; roll-offs are single-roll (elim path)", () => {
+    // 3-player elim round so we exercise the elim roll-off branch (2-player
+    // games start directly in the finale, which is covered separately).
+    let s = startGame("easy", ["A", "B", "C"]);
+    // A & B tie at Five Sixes; C is well below.
+    s = easyTurn(s, asHand([6, 6, 6, 6, 6]), asHand([1, 1, 1, 1, 1])); // A → (5,6)
+    s = easyTurn(s, asHand([6, 6, 6, 6, 6]), asHand([1, 1, 1, 1, 1])); // B → (5,6)
+    s = easyTurn(s, asHand([2, 3, 4, 5, 6]), asHand([2, 2, 2, 2, 2])); // C → low
+    expect(s.summary?.kind).toBe("rollOffNeeded");
+    expect(s.summary?.tiedIds?.sort()).toEqual(["a", "b"]);
+    s = reducer(s, { type: "ADVANCE_FROM_SUMMARY" });
+    expect(s.inRollOff).toBe(true);
+    expect(s.poolOrder).toEqual(["a", "b"]); // entry order, only the tied players
+
+    // Single-roll roll-off: ROLL_1 should land directly in "rolled2" with no holds.
+    s = reducer(s, { type: "ROLL_1", dice: asHand([6, 6, 6, 6, 6]) });
+    expect(s.turnPhase).toBe("rolled2");
+    expect(s.held).toEqual([false, false, false, false, false]);
+    s = reducer(s, { type: "COMMIT_TURN" });
+
+    // Player B's single roll
+    s = reducer(s, { type: "ROLL_1", dice: asHand([2, 3, 4, 5, 6]) });
+    expect(s.turnPhase).toBe("rolled2");
+    s = reducer(s, { type: "COMMIT_TURN" });
+
+    expect(s.summary?.kind).toBe("elimResolved");
+    expect(s.summary?.winnerId).toBe("a");
+  });
+});
+
+describe("reducer — Advanced roll-off ignores TOGGLE_HOLD and STAY", () => {
+  it("a single roll commits directly", () => {
+    let s = startGame("advanced", ["A", "B", "C"]);
+    // Round 1: A wins clearly so we exit elimination → finale of B vs C.
+    s = advancedTurn(
+      s,
+      asHand([6, 6, 6, 6, 6]),
+      [true, true, true, true, true],
+      { kind: "stay" },
+    );
+    s = advancedTurn(s, asHand([2, 3, 4, 5, 6]), [], { kind: "roll", dice: asHand([2, 2, 2, 2, 2]) });
+    s = advancedTurn(s, asHand([2, 3, 4, 5, 6]), [], { kind: "roll", dice: asHand([2, 2, 2, 2, 2]) });
+    s = reducer(s, { type: "ADVANCE_FROM_SUMMARY" });
+    // Finale game 1: B vs C tie (both Five Sixes).
+    s = advancedTurn(s, asHand([6, 6, 6, 6, 6]), [true, true, true, true, true], { kind: "stay" });
+    s = advancedTurn(s, asHand([6, 6, 6, 6, 6]), [true, true, true, true, true], { kind: "stay" });
+    s = reducer(s, { type: "ADVANCE_FROM_SUMMARY" }); // start finale roll-off
+    expect(s.inRollOff).toBe(true);
+
+    // Roll-off in Advanced: ROLL_1 → directly rolled2; TOGGLE_HOLD / STAY are no-ops.
+    s = reducer(s, { type: "ROLL_1", dice: asHand([5, 5, 5, 5, 5]) });
+    expect(s.turnPhase).toBe("rolled2");
+    const beforeToggle = s;
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 0 });
+    expect(s).toBe(beforeToggle); // unchanged
+    s = reducer(s, { type: "STAY" });
+    expect(s).toBe(beforeToggle); // unchanged
+    s = reducer(s, { type: "COMMIT_TURN" });
+    s = reducer(s, { type: "ROLL_1", dice: asHand([2, 3, 4, 5, 6]) });
+    s = reducer(s, { type: "COMMIT_TURN" });
+
+    expect(s.summary?.kind).toBe("finaleResolved");
+  });
+});
+
+describe("reducer — round 2 turn order skips Safe players", () => {
+  it("with 4 players, round 2 has 3 players in their original order minus Safe", () => {
+    let s = startGame("easy", ["A", "B", "C", "D"]);
+    // A wins round 1 with Five Sixes
+    s = easyTurn(s, asHand([6, 6, 6, 6, 6]), asHand([1, 1, 1, 1, 1])); // A
+    s = easyTurn(s, asHand([2, 3, 4, 5, 6]), asHand([2, 3, 4, 5, 6])); // B
+    s = easyTurn(s, asHand([2, 3, 4, 5, 6]), asHand([2, 3, 4, 5, 6])); // C
+    s = easyTurn(s, asHand([2, 3, 4, 5, 6]), asHand([2, 3, 4, 5, 6])); // D
+    expect(s.summary?.winnerId).toBe("a");
+    s = reducer(s, { type: "ADVANCE_FROM_SUMMARY" });
+    expect(s.context).toEqual({ kind: "elim", round: 2 });
+    expect(s.poolOrder).toEqual(["b", "c", "d"]);
+    expect(s.safeIds).toEqual(["a"]);
+  });
+});
+
+describe("reducer — full 4-player game ends with one loser", () => {
+  it("plays through to the finale and produces a loserId", () => {
+    let s = startGame("easy", ["A", "B", "C", "D"]);
+    // Round 1: A safe.
+    s = easyTurn(s, asHand([6, 6, 6, 6, 6]), asHand([1, 1, 1, 1, 1])); // A → (5,6)
+    s = easyTurn(s, asHand([2, 3, 4, 5, 6]), asHand([2, 2, 2, 2, 2])); // B
+    s = easyTurn(s, asHand([2, 3, 4, 5, 6]), asHand([2, 2, 2, 2, 2])); // C
+    s = easyTurn(s, asHand([2, 3, 4, 5, 6]), asHand([2, 2, 2, 2, 2])); // D
+    s = reducer(s, { type: "ADVANCE_FROM_SUMMARY" });
+    // Round 2 (B,C,D): B wins.
+    s = easyTurn(s, asHand([5, 5, 5, 5, 5]), asHand([1, 1, 1, 1, 1])); // B → (5,5)
+    s = easyTurn(s, asHand([2, 3, 4, 5, 6]), asHand([2, 2, 2, 2, 2])); // C
+    s = easyTurn(s, asHand([2, 3, 4, 5, 6]), asHand([2, 2, 2, 2, 2])); // D
+    s = reducer(s, { type: "ADVANCE_FROM_SUMMARY" });
+    // Now finale: C vs D
+    expect(s.context.kind).toBe("finale");
+    expect(s.context.gameNumber).toBe(1);
+    expect(s.finalists.sort()).toEqual(["c", "d"]);
+    expect(s.poolOrder).toEqual(["c", "d"]);
+
+    // Finale game 1: C wins
+    s = easyTurn(s, asHand([6, 6, 6, 6, 6]), asHand([1, 1, 1, 1, 1])); // C
+    s = easyTurn(s, asHand([2, 3, 4, 5, 6]), asHand([2, 2, 2, 2, 2])); // D
+    expect(s.summary?.kind).toBe("finaleResolved");
+    expect(s.summary?.winnerId).toBe("c");
+    expect(s.summary?.finaleLoserId).toBe("d");
+    s = reducer(s, { type: "ADVANCE_FROM_SUMMARY" });
+    expect(s.context.gameNumber).toBe(2);
+    expect(s.finaleLosses.d).toBe(1);
+
+    // Finale game 2: C wins again → D loses series 0-2 → game over
+    s = easyTurn(s, asHand([6, 6, 6, 6, 6]), asHand([1, 1, 1, 1, 1])); // C
+    s = easyTurn(s, asHand([2, 3, 4, 5, 6]), asHand([2, 2, 2, 2, 2])); // D
+    expect(s.summary?.kind).toBe("finaleResolved");
+    s = reducer(s, { type: "ADVANCE_FROM_SUMMARY" });
+    expect(s.finished).toBe(true);
+    expect(s.loserId).toBe("d");
+  });
+});
+
+describe("reducer — finale tie triggers a roll-off in same mode", () => {
+  it("inRollOff is set; mode unchanged", () => {
+    // 3-player game so we reach the finale via elimination (covers a different
+    // path than the 2-player direct-to-finale start).
+    let s = startGame("advanced", ["A", "B", "C"]);
+    // Round 1: A wins clearly
+    s = advancedTurn(s, asHand([6, 6, 6, 6, 6]), [true, true, true, true, true], { kind: "stay" });
+    s = advancedTurn(s, asHand([2, 3, 4, 5, 6]), [], { kind: "roll", dice: asHand([2, 2, 2, 2, 2]) });
+    s = advancedTurn(s, asHand([2, 3, 4, 5, 6]), [], { kind: "roll", dice: asHand([2, 2, 2, 2, 2]) });
+    s = reducer(s, { type: "ADVANCE_FROM_SUMMARY" });
+    // Finale game 1: tie between B and C.
+    s = advancedTurn(s, asHand([6, 6, 6, 6, 6]), [true, true, true, true, true], { kind: "stay" });
+    s = advancedTurn(s, asHand([6, 6, 6, 6, 6]), [true, true, true, true, true], { kind: "stay" });
+    expect(s.summary?.kind).toBe("rollOffNeeded");
+    s = reducer(s, { type: "ADVANCE_FROM_SUMMARY" });
+    expect(s.inRollOff).toBe(true);
+    expect(s.context.kind).toBe("finale");
+    expect(s.mode).toBe("advanced");
+    expect(s.poolOrder.sort()).toEqual(["b", "c"]);
+  });
+});
+
+describe("reducer — RESET", () => {
+  it("returns to initial state", () => {
+    let s = startGame("easy", ["A", "B"]);
+    s = reducer(s, { type: "ROLL_1", dice: asHand([6, 6, 6, 6, 6]) });
+    s = reducer(s, { type: "RESET" });
+    expect(s).toEqual(makeInitialState());
+  });
+});
+
+describe("reducer — same-players-again is supported via RESET + START", () => {
+  it("a fresh START with the same 2 players resets to a fresh finale", () => {
+    let s = startGame("easy", ["A", "B"]);
+    s = reducer(s, { type: "ROLL_1", dice: asHand([6, 6, 6, 6, 6]) });
+    s = dispatch(s, { type: "RESET" }, {
+      type: "START",
+      mode: "easy",
+      players: players(["A", "B"]),
+      turnOrder: ["a", "b"],
+    });
+    expect(s.context).toEqual({ kind: "finale", gameNumber: 1 });
+    expect(s.poolOrder).toEqual(["a", "b"]);
+    expect(s.safeIds).toEqual([]);
+    expect(s.finaleLosses).toEqual({ a: 0, b: 0 });
+  });
+
+  it("a fresh START with the same 3+ players resets to a fresh elim round 1", () => {
+    let s = startGame("easy", ["A", "B", "C"]);
+    s = reducer(s, { type: "ROLL_1", dice: asHand([6, 6, 6, 6, 6]) });
+    s = dispatch(s, { type: "RESET" }, {
+      type: "START",
+      mode: "easy",
+      players: players(["A", "B", "C"]),
+      turnOrder: ["a", "b", "c"],
+    });
+    expect(s.context).toEqual({ kind: "elim", round: 1 });
+    expect(s.poolOrder).toEqual(["a", "b", "c"]);
+    expect(s.safeIds).toEqual([]);
+  });
+});

@@ -13,7 +13,7 @@ interface Props {
 
 const OPTIONS: { key: TurnOrderOption; label: string }[] = [
   { key: "highestRoll", label: "Highest Roll Goes First" },
-  { key: "entryOrder", label: "Order Of Entry (Whoever typed first)" },
+  { key: "entryOrder", label: "Order of Entry / Whoever typed first" },
   { key: "alphabetical", label: "Alphabetical" },
   { key: "randomize", label: "Randomize" },
 ];

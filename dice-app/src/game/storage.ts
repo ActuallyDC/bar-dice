@@ -61,6 +61,7 @@ export function loadRoster(): Roster {
         displayName: p.displayName,
         shotsOwed: p.shotsOwed,
         gamesPlayed: p.gamesPlayed,
+        gamesLost: typeof p.gamesLost === "number" ? p.gamesLost : 0,
         lastLossAt: p.lastLossAt,
       };
     }
@@ -140,6 +141,7 @@ export function ensureRosterPlayer(
       displayName,
       shotsOwed: 0,
       gamesPlayed: 0,
+      gamesLost: 0,
       lastLossAt: null,
     };
   }
@@ -178,7 +180,9 @@ export function applyGameResult(
       ...next.players,
       [k]: {
         ...next.players[k],
-        shotsOwed: next.players[k].shotsOwed + 1,
+        shotsOwed:
+          next.players[k].shotsOwed + (participantsDisplayNames.length - 1),
+        gamesLost: next.players[k].gamesLost + 1,
         lastLossAt: now.toISOString(),
       },
     },

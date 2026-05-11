@@ -20,6 +20,7 @@ export interface RosterPlayer {
   displayName: string;
   shotsOwed: number;
   gamesPlayed: number;
+  gamesLost: number;
   lastLossAt: string | null;
 }
 

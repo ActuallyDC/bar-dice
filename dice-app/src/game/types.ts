@@ -13,7 +13,8 @@ export type TurnOrderOption =
   | "highestRoll"
   | "entryOrder"
   | "alphabetical"
-  | "randomize";
+  | "randomize"
+  | "custom";
 
 /** A roster player keyed in storage. */
 export interface RosterPlayer {

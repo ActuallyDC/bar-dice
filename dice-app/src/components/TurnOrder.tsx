@@ -16,6 +16,7 @@ const OPTIONS: { key: TurnOrderOption; label: string }[] = [
   { key: "entryOrder", label: "Order of Entry / Whoever typed first" },
   { key: "alphabetical", label: "Alphabetical" },
   { key: "randomize", label: "Randomize" },
+  { key: "custom", label: "Custom" },
 ];
 
 export function TurnOrder(props: Props) {
@@ -24,8 +25,10 @@ export function TurnOrder(props: Props) {
     initialOption ?? "highestRoll",
   );
   const [reshuffleKey, setReshuffleKey] = useState(0);
+  const [customOrder, setCustomOrder] = useState<string[] | null>(null);
 
-  const ordered = useMemo(() => {
+  const ordered = useMemo<string[]>(() => {
+    if (option === "custom") return customOrder ?? [];
     return computeTurnOrder({
       players: slots.map((s) => ({
         id: s.id,
@@ -35,9 +38,9 @@ export function TurnOrder(props: Props) {
       })),
       option,
     });
-    // reshuffleKey is intentionally a dep so tapping Randomize re-runs.
+    // reshuffleKey intentional dep
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slots, option, reshuffleKey]);
+  }, [slots, option, reshuffleKey, customOrder]);
 
   const slotById = useMemo(() => {
     const map: Record<string, PlayerSlot> = {};
@@ -46,6 +49,9 @@ export function TurnOrder(props: Props) {
   }, [slots]);
 
   function handleOptionClick(opt: TurnOrderOption) {
+    if (opt === "custom" && customOrder === null) {
+      setCustomOrder(ordered);
+    }
     if (opt === "randomize" && option === "randomize") {
       setReshuffleKey((k) => k + 1);
     } else {
@@ -53,7 +59,20 @@ export function TurnOrder(props: Props) {
     }
   }
 
-  // Always reshuffle once when first switching to randomize.
+  function moveUp(i: number) {
+    if (i <= 0 || customOrder === null) return;
+    const next = customOrder.slice();
+    [next[i - 1], next[i]] = [next[i], next[i - 1]];
+    setCustomOrder(next);
+  }
+
+  function moveDown(i: number) {
+    if (customOrder === null || i >= customOrder.length - 1) return;
+    const next = customOrder.slice();
+    [next[i], next[i + 1]] = [next[i + 1], next[i]];
+    setCustomOrder(next);
+  }
+
   useEffect(() => {
     if (option === "randomize") setReshuffleKey((k) => k + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,11 +143,32 @@ export function TurnOrder(props: Props) {
                   <span className="text-bar-mute mr-2">{i + 1}.</span>
                   {slot?.displayName ?? id}
                 </span>
-                {option === "highestRoll" && (
+                {option === "custom" ? (
+                  <span className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => moveUp(i)}
+                      disabled={i === 0}
+                      aria-label={`Move ${slot?.displayName ?? id} up`}
+                      className="tap-target focus-ring rounded-xl px-2 py-1 text-bar-ink/80 hover:text-bar-ink disabled:opacity-30 disabled:cursor-default"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveDown(i)}
+                      disabled={i === ordered.length - 1}
+                      aria-label={`Move ${slot?.displayName ?? id} down`}
+                      className="tap-target focus-ring rounded-xl px-2 py-1 text-bar-ink/80 hover:text-bar-ink disabled:opacity-30 disabled:cursor-default"
+                    >
+                      ▼
+                    </button>
+                  </span>
+                ) : option === "highestRoll" ? (
                   <span className="font-mono text-bar-mute">
                     Rolled a {slot?.setupRoll}
                   </span>
-                )}
+                ) : null}
               </li>
             );
           })}

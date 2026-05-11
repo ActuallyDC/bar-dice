@@ -54,7 +54,7 @@ export function ResultModal({
       aria-labelledby="loser-headline"
     >
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-3">
-        <p className="uppercase tracking-[0.3em] text-bar-amber text-xs">
+        <p className="uppercase tracking-[0.3em] text-bar-amber text-sm">
           Loser
         </p>
         <h1

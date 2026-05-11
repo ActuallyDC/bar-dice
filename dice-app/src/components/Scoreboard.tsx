@@ -144,10 +144,12 @@ function Badge({
     amber: "bg-bar-amber/15 text-bar-amber border-bar-amber/40",
     ember: "bg-bar-ember/20 text-bar-ember border-bar-ember/40",
   };
+  const isLoser = label === "Loser";
   return (
     <span
       className={[
-        "ml-2 rounded-full px-2 py-0.5 text-[11px] font-semibold border whitespace-nowrap",
+        "ml-2 rounded-full px-2 py-0.5 font-semibold border whitespace-nowrap",
+        isLoser ? "text-sm" : "text-[11px]",
         colors[tone],
       ].join(" ")}
     >

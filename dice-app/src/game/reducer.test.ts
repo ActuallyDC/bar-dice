@@ -398,3 +398,60 @@ describe("reducer — same-players-again is supported via RESET + START", () => 
     expect(s.safeIds).toEqual([]);
   });
 });
+
+function p(id: string, idx: number): PlayerSlot {
+  return {
+    id,
+    displayName: id.toUpperCase(),
+    nameKey: id,
+    setupRoll: 6,
+    entryIndex: idx,
+  };
+}
+
+// Five 6s - top score.
+const TOP: Hand = [6, 6, 6, 6, 6];
+// Four 6s - genuinely lower (5 is not a wild, so no promotion).
+const MID: Hand = [6, 6, 6, 6, 5];
+
+describe("finaleGameLog", () => {
+  it("appends each finale game winnerId in order", () => {
+    let s = makeInitialState();
+    s = reducer(s, {
+      type: "START",
+      players: [p("a", 0), p("b", 1)],
+      turnOrder: ["a", "b"],
+      mode: "advanced",
+    });
+    // Helper: drive one finale game where the *first roller* gets firstHand and second gets secondHand.
+    const playGame = (firstHand: Hand, secondHand: Hand) => {
+      s = reducer(s, { type: "ROLL_1", dice: firstHand });
+      s = reducer(s, { type: "STAY" });
+      s = reducer(s, { type: "COMMIT_TURN" });
+      s = reducer(s, { type: "ROLL_1", dice: secondHand });
+      s = reducer(s, { type: "STAY" });
+      s = reducer(s, { type: "COMMIT_TURN" });
+      // Summary should now be finaleResolved.
+      s = reducer(s, { type: "ADVANCE_FROM_SUMMARY" });
+    };
+    // turnOrder is [a, b] so a rolls first each game.
+    // Game 1: a wins (a gets TOP, b gets MID).
+    playGame(TOP, MID);
+    expect(s.finaleGameLog).toEqual(["a"]);
+    // Game 2: b wins (a gets MID, b gets TOP).
+    playGame(MID, TOP);
+    expect(s.finaleGameLog).toEqual(["a", "b"]);
+    // Game 3: a wins -> game ends (best of 3).
+    playGame(TOP, MID);
+    expect(s.finaleGameLog).toEqual(["a", "b", "a"]);
+    expect(s.finished).toBe(true);
+    expect(s.loserId).toBe("b");
+  });
+
+  it("is reset on RESET", () => {
+    let s = makeInitialState();
+    s = { ...s, finaleGameLog: ["a", "b"] };
+    s = reducer(s, { type: "RESET" });
+    expect(s.finaleGameLog).toEqual([]);
+  });
+});

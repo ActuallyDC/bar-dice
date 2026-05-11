@@ -51,6 +51,7 @@ export interface GameState {
   safeIds: string[];
   finalists: string[];
   finaleLosses: Record<string, number>;
+  finaleGameLog: string[];
 
   poolOrder: string[];
   poolIndex: number;
@@ -102,6 +103,7 @@ export function makeInitialState(): GameState {
     safeIds: [],
     finalists: [],
     finaleLosses: {},
+    finaleGameLog: [],
     poolOrder: [],
     poolIndex: 0,
     poolResults: {},
@@ -265,15 +267,18 @@ function handleAdvanceFromSummary(state: GameState): GameState {
     );
   }
   // finaleResolved
+  const winnerId = summary.winnerId!;
   const loserId = summary.finaleLoserId!;
   const finaleLosses = {
     ...state.finaleLosses,
     [loserId]: (state.finaleLosses[loserId] ?? 0) + 1,
   };
+  const finaleGameLog = [...state.finaleGameLog, winnerId];
   if (finaleLosses[loserId] >= 2) {
     return {
       ...state,
       finaleLosses,
+      finaleGameLog,
       summary: null,
       loserId,
       finished: true,
@@ -286,7 +291,7 @@ function handleAdvanceFromSummary(state: GameState): GameState {
   }
   const nextGame = (state.context.gameNumber ?? 1) + 1;
   return startContextPool(
-    { ...state, finaleLosses },
+    { ...state, finaleLosses, finaleGameLog },
     { kind: "finale", gameNumber: nextGame },
   );
 }

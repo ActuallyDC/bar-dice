@@ -19,12 +19,12 @@ interface Props {
 export function SetupDie({ value, rollKey, onRollSettled, size = 88 }: Props) {
   const [displayed, setDisplayed] = useState<DieValue>(value ?? 1);
   const [rolling, setRolling] = useState(false);
-  const lastRollKey = useRef<number>(rollKey);
+  const settledRollKey = useRef<number | null>(null);
   const controls = useAnimationControls();
 
   useEffect(() => {
-    if (rollKey === lastRollKey.current) return;
-    lastRollKey.current = rollKey;
+    if (rollKey === 0) return;
+    if (rollKey === settledRollKey.current) return;
     if (value == null) return;
     setRolling(true);
     const ANIM_MS = 1200;
@@ -39,6 +39,7 @@ export function SetupDie({ value, rollKey, onRollSettled, size = 88 }: Props) {
       window.clearInterval(id);
       setDisplayed(value);
       setRolling(false);
+      settledRollKey.current = rollKey;
       onRollSettled?.(value);
     }, ANIM_MS);
     return () => {

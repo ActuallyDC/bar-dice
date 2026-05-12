@@ -20,6 +20,7 @@ export type TurnOrderOption =
 export interface RosterPlayer {
   displayName: string;
   shotsOwed: number;
+  shotsBought: number;
   gamesPlayed: number;
   gamesLost: number;
   lastLossAt: string | null;

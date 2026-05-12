@@ -4,7 +4,7 @@ import { Tally } from "./Tally";
 import { UndoProvider, useRoster } from "./UndoProvider";
 import { ROSTER_KEY, applyGameResult } from "../game/storage";
 
-function seedRoster(players: Record<string, { displayName: string; shotsOwed: number; gamesPlayed: number; gamesLost: number; lastLossAt: string | null }>) {
+function seedRoster(players: Record<string, { displayName: string; shotsOwed: number; shotsBought: number; gamesPlayed: number; gamesLost: number; lastLossAt: string | null }>) {
   window.localStorage.setItem(
     ROSTER_KEY,
     JSON.stringify({ version: 1, players }),
@@ -12,11 +12,12 @@ function seedRoster(players: Record<string, { displayName: string; shotsOwed: nu
 }
 
 describe("Tally", () => {
-  it("renders Games and Shots columns per player", () => {
+  it("renders four stat columns per player", () => {
     seedRoster({
       bob: {
         displayName: "Bob",
         shotsOwed: 5,
+        shotsBought: 7,
         gamesPlayed: 3,
         gamesLost: 2,
         lastLossAt: null,
@@ -27,12 +28,15 @@ describe("Tally", () => {
         <Tally onBack={() => {}} />
       </UndoProvider>,
     );
-    // Two columns, both labelled.
-    expect(screen.getByText("Games")).toBeInTheDocument();
-    expect(screen.getByText("Shots")).toBeInTheDocument();
-    // Bob: 2 games lost, 5 shots owed.
+    expect(screen.getByText("Games Played")).toBeInTheDocument();
+    expect(screen.getByText("Games Lost")).toBeInTheDocument();
+    expect(screen.getByText("Shots Owed")).toBeInTheDocument();
+    expect(screen.getByText("Shots Bought")).toBeInTheDocument();
+    // Bob: 3 played, 2 lost, 5 owed, 7 bought.
+    expect(screen.getByText("3")).toBeInTheDocument();
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("5")).toBeInTheDocument();
+    expect(screen.getByText("7")).toBeInTheDocument();
   });
 
   it("does not render the old 'N games played' subtitle", () => {
@@ -40,6 +44,7 @@ describe("Tally", () => {
       bob: {
         displayName: "Bob",
         shotsOwed: 5,
+        shotsBought: 0,
         gamesPlayed: 3,
         gamesLost: 2,
         lastLossAt: null,
@@ -50,7 +55,7 @@ describe("Tally", () => {
         <Tally onBack={() => {}} />
       </UndoProvider>,
     );
-    expect(screen.queryByText(/games played/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\d+ games played/i)).not.toBeInTheDocument();
   });
 });
 

@@ -60,6 +60,7 @@ describe("ensureRosterPlayer", () => {
     expect(roster.players.steve).toEqual({
       displayName: "Steve",
       shotsOwed: 0,
+      shotsBought: 0,
       gamesPlayed: 0,
       gamesLost: 0,
       lastLossAt: null,
@@ -119,8 +120,16 @@ describe("applyGameResult", () => {
     expect(r2.players.bob.shotsOwed).toBe(4);
   });
 
-  it("defaults gamesLost to 0 when reading a roster shape that predates the field", () => {
-    // Simulate the stored shape from v1.0 (no gamesLost field).
+  it("ignores __proto__ / constructor / prototype keys in stored players", () => {
+    const malicious = `{"version":1,"players":{"__proto__":{"polluted":true},"constructor":{"polluted":true},"prototype":{"polluted":true},"ana":{"displayName":"Ana","shotsOwed":1,"gamesPlayed":1,"gamesLost":0,"lastLossAt":null}}}`;
+    window.localStorage.setItem(ROSTER_KEY, malicious);
+    const r = loadRoster();
+    expect(Object.keys(r.players).sort()).toEqual(["ana"]);
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  it("defaults gamesLost and shotsBought to 0 when reading a roster shape that predates those fields", () => {
+    // Simulate the stored shape from v1.0 (no gamesLost or shotsBought field).
     const legacy = {
       version: 1,
       players: {
@@ -135,6 +144,7 @@ describe("applyGameResult", () => {
     window.localStorage.setItem(ROSTER_KEY, JSON.stringify(legacy));
     const r = loadRoster();
     expect(r.players.ana.gamesLost).toBe(0);
+    expect(r.players.ana.shotsBought).toBe(0);
     expect(r.players.ana.shotsOwed).toBe(1);
   });
 });

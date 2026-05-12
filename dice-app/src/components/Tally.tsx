@@ -36,7 +36,14 @@ export function Tally({ onBack }: Props) {
     if (!p) return;
     const next: Roster = {
       ...roster,
-      players: { ...roster.players, [key]: { ...p, shotsOwed: 0 } },
+      players: {
+        ...roster.players,
+        [key]: {
+          ...p,
+          shotsBought: (p.shotsBought ?? 0) + p.shotsOwed,
+          shotsOwed: 0,
+        },
+      },
     };
     applyMutation(next, `Settled ${p.displayName}'s tab.`, "tally-action");
     setConfirmSettleKey(null);
@@ -55,7 +62,11 @@ export function Tally({ onBack }: Props) {
   function clearAll() {
     const players: Roster["players"] = {};
     for (const [k, p] of Object.entries(roster.players)) {
-      players[k] = { ...p, shotsOwed: 0 };
+      players[k] = {
+        ...p,
+        shotsBought: (p.shotsBought ?? 0) + p.shotsOwed,
+        shotsOwed: 0,
+      };
     }
     const next: Roster = { ...roster, players };
     applyMutation(next, `Cleared all tabs.`, "tally-action");
@@ -97,11 +108,17 @@ export function Tally({ onBack }: Props) {
               >
                 <span className="font-semibold text-bar-ink">{r.displayName}</span>
                 <div className="grid grid-cols-2 gap-2">
-                  <Stat label="Games" value={r.gamesLost} tone={r.gamesLost > 0 ? "amber" : "mute"} />
+                  <Stat label="Games Played" value={r.gamesPlayed} tone={r.gamesPlayed > 0 ? "amber" : "mute"} />
+                  <Stat label="Games Lost" value={r.gamesLost} tone={r.gamesLost > 0 ? "amber" : "mute"} />
                   <Stat
-                    label="Shots"
+                    label="Shots Owed"
                     value={r.shotsOwed}
-                    tone={r.shotsOwed > 0 ? "ember" : "good"}
+                    tone={r.shotsOwed > 0 ? "ember" : "mute"}
+                  />
+                  <Stat
+                    label="Shots Bought"
+                    value={r.shotsBought ?? 0}
+                    tone={(r.shotsBought ?? 0) > 0 ? "good" : "mute"}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">

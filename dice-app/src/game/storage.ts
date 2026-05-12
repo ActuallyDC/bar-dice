@@ -47,6 +47,7 @@ export function loadRoster(): Roster {
     const playersIn = (parsed as { players: Record<string, unknown> }).players;
     const players: Record<string, RosterPlayer> = {};
     for (const [k, v] of Object.entries(playersIn)) {
+      if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
       if (!v || typeof v !== "object") continue;
       const p = v as Partial<RosterPlayer>;
       if (
@@ -60,6 +61,7 @@ export function loadRoster(): Roster {
       players[k] = {
         displayName: p.displayName,
         shotsOwed: p.shotsOwed,
+        shotsBought: typeof p.shotsBought === "number" ? p.shotsBought : 0,
         gamesPlayed: p.gamesPlayed,
         gamesLost: typeof p.gamesLost === "number" ? p.gamesLost : 0,
         lastLossAt: p.lastLossAt,
@@ -140,6 +142,7 @@ export function ensureRosterPlayer(
     players[key] = {
       displayName,
       shotsOwed: 0,
+      shotsBought: 0,
       gamesPlayed: 0,
       gamesLost: 0,
       lastLossAt: null,

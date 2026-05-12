@@ -49,5 +49,7 @@ export function computeTurnOrder(input: TurnOrderInput): string[] {
       }
       return out.map((p) => p.id);
     }
+    case "custom":
+      return arr.map((p) => p.id);
   }
 }

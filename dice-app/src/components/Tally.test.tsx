@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, vi } from "vitest";
+import { describe, expect, it, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import { Tally } from "./Tally";
 import { UndoProvider, useRoster } from "./UndoProvider";

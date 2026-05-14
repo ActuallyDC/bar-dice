@@ -5,8 +5,9 @@ import {
   roll5,
   type GameState,
 } from "../game/reducer";
-import { describeScore, scoreHand } from "../game/score";
-import type { GameMode } from "../game/types";
+import { compareScores, describeScore, scoreHand } from "../game/score";
+import { maxScoreAfterRoll2 } from "../game/projection";
+import type { GameMode, Score } from "../game/types";
 import { modeLabel } from "../game/modeLabel";
 import { Button, Heading, ScreenShell, Subtle } from "./ui";
 import { Scoreboard } from "./Scoreboard";
@@ -32,6 +33,39 @@ export function Game({ state, dispatch, onCancelGame }: Props) {
   // Provide a stable score for the current dice (only meaningful after rolling).
   const liveScore =
     state.turnPhase === "idle" ? null : scoreHand(state.dice);
+
+  // Auto-mode courtesy warning: after the 1st Roll, if the optimal hold
+  // can't beat the current leader even in the best case, surface it so
+  // the player can decide whether to take the 2nd Roll anyway.
+  const cannotBeatLeader = useMemo<{
+    max: Score;
+    leader: Score;
+  } | null>(() => {
+    if (state.mode !== "easy") return null;
+    if (state.inRollOff) return null;
+    if (state.turnPhase !== "rolled1") return null;
+    let leader: Score | null = null;
+    for (const id of state.poolOrder) {
+      if (id === activeId) continue;
+      const r = state.poolResults[id];
+      if (!r) continue;
+      if (!leader || compareScores(r.score, leader) === 1) leader = r.score;
+    }
+    if (!leader) return null;
+    const max = maxScoreAfterRoll2(state.dice, state.held);
+    if (!max) return null;
+    if (compareScores(max, leader) < 0) return { max, leader };
+    return null;
+  }, [
+    state.mode,
+    state.inRollOff,
+    state.turnPhase,
+    state.poolOrder,
+    state.poolResults,
+    state.dice,
+    state.held,
+    activeId,
+  ]);
 
   const showDice = state.summary === null && !state.finished && activeId;
 
@@ -112,6 +146,12 @@ export function Game({ state, dispatch, onCancelGame }: Props) {
             state.turnPhase === "rolled1" && (
               <Subtle>Optimal hold applied. Roll Again or Stay.</Subtle>
             )}
+          {cannotBeatLeader && (
+            <p className="text-sm text-bar-ember text-center">
+              Best case here is {describeScore(cannotBeatLeader.max)} — won't
+              beat {describeScore(cannotBeatLeader.leader)}.
+            </p>
+          )}
           {!state.inRollOff &&
             state.mode === "advanced" &&
             state.turnPhase === "rolled1" && (

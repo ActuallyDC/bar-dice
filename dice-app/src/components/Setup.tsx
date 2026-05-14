@@ -18,9 +18,10 @@ interface Props {
   roster: Roster;
   onComplete: (r: SetupResult) => void;
   onViewTally: () => void;
+  onViewHowToPlay: () => void;
 }
 
-export function Setup({ initialMode, roster, onComplete, onViewTally }: Props) {
+export function Setup({ initialMode, roster, onComplete, onViewTally, onViewHowToPlay }: Props) {
   const [step, setStep] = useState<Step>("settings");
   const [slots, setSlots] = useState<PlayerSlot[]>([]);
   const [mode, setMode] = useState<GameMode>(initialMode);
@@ -62,6 +63,7 @@ export function Setup({ initialMode, roster, onComplete, onViewTally }: Props) {
           onModeChange={setMode}
           onStart={handleStartFromSettings}
           onViewTally={onViewTally}
+          onViewHowToPlay={onViewHowToPlay}
         />
       )}
       {step === "order" && (

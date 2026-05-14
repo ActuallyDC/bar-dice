@@ -22,6 +22,7 @@ interface Props {
   onModeChange: (m: GameMode) => void;
   onStart: (slots: PlayerSlot[]) => void;
   onViewTally: () => void;
+  onViewHowToPlay?: () => void;
   onRestart?: () => void;
 }
 
@@ -33,6 +34,7 @@ export function GameSettings(props: Props) {
     onModeChange,
     onStart,
     onViewTally,
+    onViewHowToPlay,
   } = props;
 
   const [rows, setRows] = useState<Row[]>(() =>
@@ -217,14 +219,26 @@ export function GameSettings(props: Props) {
         </Subtle>
       </section>
 
-      <section className="mt-auto flex justify-center">
-        <button
-          type="button"
-          className="text-bar-amber underline underline-offset-4 tap-target focus-ring px-3"
-          onClick={onViewTally}
-        >
-          View Tally
-        </button>
+      <section className="mt-auto flex flex-col items-center gap-2">
+        <div className="flex gap-4">
+          <button
+            type="button"
+            className="text-bar-amber underline underline-offset-4 tap-target focus-ring px-3"
+            onClick={onViewTally}
+          >
+            View Tally
+          </button>
+          {onViewHowToPlay && (
+            <button
+              type="button"
+              className="text-bar-amber underline underline-offset-4 tap-target focus-ring px-3"
+              onClick={onViewHowToPlay}
+            >
+              How to Play
+            </button>
+          )}
+        </div>
+        <Subtle>Please Play Responsibly.</Subtle>
       </section>
     </ScreenShell>
   );

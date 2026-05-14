@@ -6,13 +6,15 @@ import { makeInitialState, reducer } from "./game/reducer";
 import { Game } from "./components/Game";
 import { ResultModal } from "./components/ResultModal";
 import { Tally } from "./components/Tally";
+import { HowToPlay } from "./components/HowToPlay";
 import { UndoProvider, useRoster } from "./components/UndoProvider";
 import { ConfirmModal } from "./components/ConfirmModal";
 
 type Screen =
   | { kind: "setup" }
   | { kind: "game" }
-  | { kind: "tally"; from: "setup" | "result" };
+  | { kind: "tally"; from: "setup" | "result" }
+  | { kind: "howToPlay" };
 
 interface LineupSnapshot {
   slots: PlayerSlot[];
@@ -85,7 +87,11 @@ function AppInner() {
           roster={roster}
           onComplete={handleSetupComplete}
           onViewTally={() => setScreen({ kind: "tally", from: "setup" })}
+          onViewHowToPlay={() => setScreen({ kind: "howToPlay" })}
         />
+      )}
+      {screen.kind === "howToPlay" && (
+        <HowToPlay onBack={() => setScreen({ kind: "setup" })} />
       )}
       {screen.kind === "game" && lineup && (
         <Game

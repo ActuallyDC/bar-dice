@@ -173,12 +173,13 @@ function ActionButtons({
         fullWidth
         onClick={() => dispatch({ type: "ROLL_1", dice: roll5() })}
       >
-        Roll
+        1st Roll
       </Button>
     );
   }
   if (phase === "rolled1") {
     const reroll = state.held.filter((h) => !h).length;
+    const rerollLabel = reroll === 1 ? "1 die" : `${reroll} dice`;
     return (
       <div className="grid grid-cols-2 gap-2">
         <Button
@@ -190,7 +191,7 @@ function ActionButtons({
         <Button
           onClick={() => dispatch({ type: "ROLL_2", dice: roll5() })}
         >
-          Roll Again ({reroll} left)
+          2nd Roll ({rerollLabel})
         </Button>
       </div>
     );

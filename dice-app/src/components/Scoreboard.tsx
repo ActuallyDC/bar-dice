@@ -35,8 +35,16 @@ export function Scoreboard({ state }: Props) {
     return ids;
   })();
 
-  // Sort: canonical entry order.
-  const ordered = [...state.players].sort((a, b) => a.entryIndex - b.entryIndex);
+  // Sort by the chosen "Who rolls first?" turn order so the board matches
+  // the play sequence. Players missing from turnOrder (shouldn't happen)
+  // fall back to entryIndex.
+  const turnOrderIndex = new Map(state.turnOrder.map((id, i) => [id, i]));
+  const fallback = state.players.length;
+  const ordered = [...state.players].sort((a, b) => {
+    const ai = turnOrderIndex.get(a.id) ?? fallback + a.entryIndex;
+    const bi = turnOrderIndex.get(b.id) ?? fallback + b.entryIndex;
+    return ai - bi;
+  });
 
   return (
     <ul className="flex flex-col gap-1 rounded-2xl bg-bar-panel border border-bar-line p-3">

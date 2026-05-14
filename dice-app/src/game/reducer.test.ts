@@ -590,9 +590,47 @@ describe("newlyMatched", () => {
     s = reducer(s, { type: "ROLL_1", dice: [4, 4, 4, 2, 1] });
     s = reducer(s, { type: "TOGGLE_HOLD", index: 0 });
     s = reducer(s, { type: "ROLL_2", dice: [9, 4, 1, 2, 3] as any });
-    expect(s.newlyMatched).toEqual([false, true, false, false, false]);
+    // Pos 1 matches the held face (4); pos 2 is a wild 1.
+    expect(s.newlyMatched).toEqual([false, true, true, false, false]);
     s = reducer(s, { type: "COMMIT_TURN" });
     expect(s.newlyMatched).toEqual([false, false, false, false, false]);
+  });
+
+  it("a re-rolled 1 (wild) is newlyMatched when the held face is not 1", () => {
+    // Player holds three 4s. Roll 2 lands a 1 in pos 3 (wild → counts as a 4).
+    let s = startTwoPlayerAdvanced();
+    s = reducer(s, { type: "ROLL_1", dice: [4, 4, 4, 2, 5] });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 0 });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 1 });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 2 });
+    s = reducer(s, { type: "ROLL_2", dice: [9, 9, 9, 1, 6] as any });
+    expect(s.newlyMatched).toEqual([false, false, false, true, false]);
+    expect(s.held).toEqual([true, true, true, true, false]);
+  });
+
+  it("a re-rolled score-face is newlyMatched even when the first held position is a wild 1", () => {
+    // Player holds the wild 1 (pos 0) and a pair of 4s (pos 1, 2). Roll 2
+    // lands another 4 in pos 3. The score face is 4; the held face must be
+    // detected as 4, not 1, so the new 4 is recognised as a match.
+    let s = startTwoPlayerAdvanced();
+    s = reducer(s, { type: "ROLL_1", dice: [1, 4, 4, 2, 5] });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 0 });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 1 });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 2 });
+    s = reducer(s, { type: "ROLL_2", dice: [9, 9, 9, 4, 6] as any });
+    expect(s.newlyMatched).toEqual([false, false, false, true, false]);
+    expect(s.held).toEqual([true, true, true, true, false]);
+  });
+
+  it("a re-rolled 1 still highlights even when only a wild 1 is held", () => {
+    // All-1 holds: nothing else to compare against. A re-rolled 1 still
+    // matches (held face is 1).
+    let s = startTwoPlayerAdvanced();
+    s = reducer(s, { type: "ROLL_1", dice: [1, 2, 3, 4, 5] });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 0 });
+    s = reducer(s, { type: "ROLL_2", dice: [9, 1, 6, 6, 6] as any });
+    expect(s.newlyMatched).toEqual([false, true, false, false, false]);
+    expect(s.held).toEqual([true, true, false, false, false]);
   });
 });
 

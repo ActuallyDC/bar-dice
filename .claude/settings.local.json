@@ -13,7 +13,8 @@
       "Bash(npm run *)",
       "Bash(ls -la \"/c/Users/Admin/.claude/projects/C--Users-Admin-OneDrive-Claude-Code-Projects-Dice-Web-App/memory/\")",
       "Bash(git init *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

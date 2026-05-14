@@ -399,9 +399,20 @@ export function reducer(state: GameState, action: GameAction): GameState {
     case "ROLL_2": {
       if (state.turnPhase !== "rolled1") return state;
       const prevHeld = state.held;
-      const heldFaceIdx = prevHeld.findIndex((h) => h);
-      const heldFace: DieValue | null =
-        heldFaceIdx >= 0 ? state.dice[heldFaceIdx] : null;
+      // Held face = the non-wild face the player is targeting. Wild 1s are
+      // held alongside it for scoring, but the *targeted* face is what we
+      // compare Roll-2 dice against. Fall back to 1 only if every held die
+      // is a 1.
+      let heldFace: DieValue | null = null;
+      for (let i = 0; i < 5; i++) {
+        if (!prevHeld[i]) continue;
+        const v = state.dice[i];
+        if (v !== 1) {
+          heldFace = v;
+          break;
+        }
+        if (heldFace === null) heldFace = v; // remember 1 as fallback
+      }
 
       const dice = state.dice.slice() as DieValue[];
       for (let i = 0; i < 5; i++) {
@@ -414,7 +425,10 @@ export function reducer(state: GameState, action: GameAction): GameState {
       const nextHeld = prevHeld.slice() as [boolean, boolean, boolean, boolean, boolean];
       if (heldFace !== null) {
         for (let i = 0; i < 5; i++) {
-          if (!prevHeld[i] && dice[i] === heldFace) {
+          if (prevHeld[i]) continue;
+          // Match the score face directly, or a wild 1 (unless the score
+          // face is 1, in which case dice[i] === heldFace already catches it).
+          if (dice[i] === heldFace || dice[i] === 1) {
             newlyMatched[i] = true;
             nextHeld[i] = true;
           }

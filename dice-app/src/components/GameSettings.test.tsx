@@ -181,6 +181,66 @@ describe("GameSettings — inline roll on Add", () => {
     expect(screen.getByRole("button", { name: "Start" })).not.toBeDisabled();
   });
 
+  it("caps the name input at 20 characters via maxLength", () => {
+    render(
+      <GameSettings
+        initialRows={[]}
+        mode="easy"
+        roster={emptyRoster()}
+        onModeChange={noop}
+        onStart={noop}
+        onViewTally={noop}
+      />,
+    );
+    const input = screen.getByPlaceholderText("Who's in?") as HTMLInputElement;
+    expect(input.maxLength).toBe(20);
+  });
+
+  it("truncates programmatically-set names to 20 characters in commitAdd", async () => {
+    render(
+      <GameSettings
+        initialRows={[]}
+        mode="easy"
+        roster={emptyRoster()}
+        onModeChange={noop}
+        onStart={noop}
+        onViewTally={noop}
+      />,
+    );
+    const input = screen.getByPlaceholderText("Who's in?") as HTMLInputElement;
+    // Bypass maxLength (simulating paste / programmatic input) by writing
+    // a 25-char value straight to the input value attribute via fireEvent.
+    fireEvent.change(input, { target: { value: "Abcdefghijklmnopqrstuvwxy" } });
+    fireEvent.click(screen.getByRole("button", { name: /Add|Adding/ }));
+    // Row label is the truncated 20-char prefix.
+    expect(screen.getByText("Abcdefghijklmnopqrst")).toBeTruthy();
+    expect(screen.queryByText("Abcdefghijklmnopqrstuvwxy")).toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+  });
+
+  it("accepts a 20-character name unchanged", async () => {
+    render(
+      <GameSettings
+        initialRows={[]}
+        mode="easy"
+        roster={emptyRoster()}
+        onModeChange={noop}
+        onStart={noop}
+        onViewTally={noop}
+      />,
+    );
+    const input = screen.getByPlaceholderText("Who's in?");
+    const exactly20 = "Abcdefghijklmnopqrst";
+    fireEvent.change(input, { target: { value: exactly20 } });
+    fireEvent.click(screen.getByRole("button", { name: /Add|Adding/ }));
+    expect(screen.getByText(exactly20)).toBeTruthy();
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+  });
+
   it("onStart receives PlayerSlot[] with the committed rows", () => {
     const onStart = vi.fn();
     render(

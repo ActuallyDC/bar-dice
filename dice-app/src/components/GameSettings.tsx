@@ -48,7 +48,8 @@ export function GameSettings(props: Props) {
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const trimmed = draft.trim().replace(/\s+/g, " ");
+  const NAME_MAX = 20;
+  const trimmed = draft.trim().replace(/\s+/g, " ").slice(0, NAME_MAX);
   const trimmedKey = nameKey(trimmed);
   const isDuplicate =
     trimmed.length > 0 && rows.some((r) => r.nameKey === trimmedKey);
@@ -132,6 +133,7 @@ export function GameSettings(props: Props) {
             ref={inputRef}
             autoFocus
             value={draft}
+            maxLength={NAME_MAX}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {

@@ -564,12 +564,13 @@ describe("newlyMatched", () => {
     expect(s.held).toEqual([true, true, true, true, false]);
   });
 
-  it("ROLL_2 with no held dice yields all-false newlyMatched", () => {
+  it("ROLL_2 with no holds: every die composing the new score is newlyMatched", () => {
     let s = startTwoPlayerAdvanced();
     s = reducer(s, { type: "ROLL_1", dice: [1, 2, 3, 4, 5] });
-    // No holds — re-roll everything.
+    // No holds — re-roll everything into Five Sixes.
     s = reducer(s, { type: "ROLL_2", dice: [6, 6, 6, 6, 6] });
-    expect(s.newlyMatched).toEqual([false, false, false, false, false]);
+    expect(s.held).toEqual([true, true, true, true, true]);
+    expect(s.newlyMatched).toEqual([true, true, true, true, true]);
   });
 
   it("ROLL_1 clears newlyMatched", () => {
@@ -622,15 +623,43 @@ describe("newlyMatched", () => {
     expect(s.held).toEqual([true, true, true, true, false]);
   });
 
-  it("a re-rolled 1 still highlights even when only a wild 1 is held", () => {
-    // All-1 holds: nothing else to compare against. A re-rolled 1 still
-    // matches (held face is 1).
+  it("re-rolling into a 5-of-a-kind lights every contributing die", () => {
+    // Held only a wild 1; re-rolls land [1, 6, 6, 6] → dice = [1, 1, 6, 6, 6]
+    // = Five Sixes (3 sixes + 2 wilds). Pos 0 was already held so it doesn't
+    // pulse; pos 1–4 newly join the score and pulse gold.
     let s = startTwoPlayerAdvanced();
     s = reducer(s, { type: "ROLL_1", dice: [1, 2, 3, 4, 5] });
     s = reducer(s, { type: "TOGGLE_HOLD", index: 0 });
     s = reducer(s, { type: "ROLL_2", dice: [9, 1, 6, 6, 6] as any });
-    expect(s.newlyMatched).toEqual([false, true, false, false, false]);
-    expect(s.held).toEqual([true, true, false, false, false]);
+    expect(s.held).toEqual([true, true, true, true, true]);
+    expect(s.newlyMatched).toEqual([false, true, true, true, true]);
+  });
+
+  it("Auto: after Roll 2, held tracks the new high-score face (not the Roll-1 face)", () => {
+    // Playtest scenario from bardice.vercel.app: Auto holds 2,2 + wild 1
+    // (Three Twos) on Roll 1, re-rolls land 3,3 → Three Threes wins on the
+    // higher-face tiebreak. The held set must drop the 2s and pick up the
+    // new 3s so highlights match the displayed score.
+    let s = startGame("easy", ["Ana", "Bob"]);
+    s = reducer(s, { type: "ROLL_1", dice: [2, 2, 1, 3, 4] });
+    expect(s.held).toEqual([true, true, true, false, false]);
+    s = reducer(s, { type: "ROLL_2", dice: [9, 9, 9, 3, 3] as any });
+    expect(s.dice).toEqual([2, 2, 1, 3, 3]);
+    expect(s.held).toEqual([false, false, true, true, true]);
+    expect(s.newlyMatched).toEqual([false, false, false, true, true]);
+  });
+
+  it("Manual: ROLL_2 drops previously-held dice when the score face changes", () => {
+    // Same invariant in Manual mode: held 2,2 + wild 1, re-roll into 3,3 →
+    // 2s lose their highlight, the new 3s pick it up.
+    let s = startTwoPlayerAdvanced();
+    s = reducer(s, { type: "ROLL_1", dice: [2, 2, 1, 3, 4] });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 0 });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 1 });
+    s = reducer(s, { type: "TOGGLE_HOLD", index: 2 });
+    s = reducer(s, { type: "ROLL_2", dice: [9, 9, 9, 3, 3] as any });
+    expect(s.held).toEqual([false, false, true, true, true]);
+    expect(s.newlyMatched).toEqual([false, false, false, true, true]);
   });
 });
 

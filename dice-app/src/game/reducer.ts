@@ -399,41 +399,31 @@ export function reducer(state: GameState, action: GameAction): GameState {
     case "ROLL_2": {
       if (state.turnPhase !== "rolled1") return state;
       const prevHeld = state.held;
-      // Held face = the non-wild face the player is targeting. Wild 1s are
-      // held alongside it for scoring, but the *targeted* face is what we
-      // compare Roll-2 dice against. Fall back to 1 only if every held die
-      // is a 1.
-      let heldFace: DieValue | null = null;
-      for (let i = 0; i < 5; i++) {
-        if (!prevHeld[i]) continue;
-        const v = state.dice[i];
-        if (v !== 1) {
-          heldFace = v;
-          break;
-        }
-        if (heldFace === null) heldFace = v; // remember 1 as fallback
-      }
 
       const dice = state.dice.slice() as DieValue[];
       for (let i = 0; i < 5; i++) {
         if (!prevHeld[i]) dice[i] = action.dice[i];
       }
 
+      // Held set after Roll 2 = the dice that compose the displayed score.
+      // If the re-roll changed the winning face (e.g. 2,2 + wild → 3,3 + wild),
+      // previously-held dice that no longer contribute drop out, and dice
+      // that joined the score pick up the highlight + gold pulse.
+      const score = scoreHand(dice as unknown as Hand);
+      const nextHeld: [boolean, boolean, boolean, boolean, boolean] =
+        score.count === 5
+          ? [true, true, true, true, true]
+          : (dice.map(
+              (d) => d === 1 || d === score.faceValue,
+            ) as unknown as [boolean, boolean, boolean, boolean, boolean]);
+
       const newlyMatched: [boolean, boolean, boolean, boolean, boolean] = [
-        false, false, false, false, false,
+        nextHeld[0] && !prevHeld[0],
+        nextHeld[1] && !prevHeld[1],
+        nextHeld[2] && !prevHeld[2],
+        nextHeld[3] && !prevHeld[3],
+        nextHeld[4] && !prevHeld[4],
       ];
-      const nextHeld = prevHeld.slice() as [boolean, boolean, boolean, boolean, boolean];
-      if (heldFace !== null) {
-        for (let i = 0; i < 5; i++) {
-          if (prevHeld[i]) continue;
-          // Match the score face directly, or a wild 1 (unless the score
-          // face is 1, in which case dice[i] === heldFace already catches it).
-          if (dice[i] === heldFace || dice[i] === 1) {
-            newlyMatched[i] = true;
-            nextHeld[i] = true;
-          }
-        }
-      }
 
       return {
         ...state,

@@ -70,6 +70,10 @@ export interface GameState {
   resultApplied: boolean;
   stayedThisTurn: boolean;
   newlyMatched: [boolean, boolean, boolean, boolean, boolean];
+  /** Bumped on every 1st Roll and 2nd Roll so the dice know to tumble. */
+  rollId: number;
+  /** Which dice the latest roll re-rolled (all five on a 1st Roll). */
+  lastRolled: [boolean, boolean, boolean, boolean, boolean];
 }
 
 export type GameAction =
@@ -96,6 +100,13 @@ const ALL_FALSE: [boolean, boolean, boolean, boolean, boolean] = [
   false,
   false,
 ];
+const ALL_TRUE: [boolean, boolean, boolean, boolean, boolean] = [
+  true,
+  true,
+  true,
+  true,
+  true,
+];
 
 export function makeInitialState(): GameState {
   return {
@@ -121,6 +132,8 @@ export function makeInitialState(): GameState {
     resultApplied: false,
     stayedThisTurn: false,
     newlyMatched: ALL_FALSE,
+    rollId: 0,
+    lastRolled: ALL_FALSE,
   };
 }
 
@@ -333,10 +346,12 @@ export function reducer(state: GameState, action: GameAction): GameState {
       if (state.summary || state.finished) return state;
       if (state.turnPhase !== "idle") return state;
       const dice = action.dice;
+      const roll = { rollId: state.rollId + 1, lastRolled: ALL_TRUE };
       // Roll-off / tiebreaker: single roll, no holds, no Stay, no Roll 2.
       if (state.inRollOff) {
         return {
           ...state,
+          ...roll,
           dice,
           held: ALL_FALSE,
           turnPhase: "rolled2",
@@ -350,6 +365,7 @@ export function reducer(state: GameState, action: GameAction): GameState {
         const decision = easyHold(dice);
         return {
           ...state,
+          ...roll,
           dice,
           held: decision.held as [boolean, boolean, boolean, boolean, boolean],
           turnPhase: decision.stay ? "rolled2" : "rolled1",
@@ -361,6 +377,7 @@ export function reducer(state: GameState, action: GameAction): GameState {
       // Advanced mode: nothing held by default.
       return {
         ...state,
+        ...roll,
         dice,
         held: ALL_FALSE,
         turnPhase: "rolled1",
@@ -431,6 +448,8 @@ export function reducer(state: GameState, action: GameAction): GameState {
         held: nextHeld,
         turnPhase: "rolled2",
         newlyMatched,
+        rollId: state.rollId + 1,
+        lastRolled: prevHeld.map((h) => !h) as [boolean, boolean, boolean, boolean, boolean],
       };
     }
 

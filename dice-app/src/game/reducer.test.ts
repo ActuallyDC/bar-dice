@@ -691,3 +691,79 @@ describe("tiebreaker order", () => {
     expect(s.inRollOff).toBe(true);
   });
 });
+
+describe("rollId and lastRolled", () => {
+  it("start at zero with nothing rolled", () => {
+    const s = startGame("advanced", ["Ana", "Bob", "Cat"]);
+    expect(s.rollId).toBe(0);
+    expect(s.lastRolled).toEqual([false, false, false, false, false]);
+  });
+
+  it("the 1st Roll bumps rollId and marks all five dice rolled", () => {
+    const s = dispatch(startGame("advanced", ["Ana", "Bob", "Cat"]), {
+      type: "ROLL_1",
+      dice: asHand([2, 3, 4, 5, 6]),
+    });
+    expect(s.rollId).toBe(1);
+    expect(s.lastRolled).toEqual([true, true, true, true, true]);
+  });
+
+  it("the 2nd Roll bumps rollId and marks only the dice that weren't held", () => {
+    const s = dispatch(
+      startGame("advanced", ["Ana", "Bob", "Cat"]),
+      { type: "ROLL_1", dice: asHand([4, 4, 2, 3, 6]) },
+      { type: "TOGGLE_HOLD", index: 0 },
+      { type: "TOGGLE_HOLD", index: 1 },
+      { type: "ROLL_2", dice: asHand([5, 5, 5, 5, 5]) },
+    );
+    expect(s.rollId).toBe(2);
+    expect(s.lastRolled).toEqual([false, false, true, true, true]);
+  });
+
+  it("the Auto 1st Roll bumps rollId even when it lands five of a kind", () => {
+    const s = dispatch(startGame("easy", ["Ana", "Bob", "Cat"]), {
+      type: "ROLL_1",
+      dice: asHand([6, 6, 6, 6, 6]),
+    });
+    expect(s.rollId).toBe(1);
+    expect(s.lastRolled).toEqual([true, true, true, true, true]);
+  });
+
+  it("a tiebreaker roll bumps rollId and marks all five dice rolled", () => {
+    let s = startGame("easy", ["Ana", "Bob", "Cat"]);
+    s = easyTurn(s, asHand([6, 6, 2, 3, 4]), asHand([6, 6, 6, 6, 6]));
+    s = easyTurn(s, asHand([6, 6, 2, 3, 4]), asHand([6, 6, 6, 6, 6]));
+    s = easyTurn(s, asHand([2, 3, 4, 5, 2]), asHand([2, 2, 3, 4, 5]));
+    s = reducer(s, { type: "ADVANCE_FROM_SUMMARY" });
+    expect(s.inRollOff).toBe(true);
+    const before = s.rollId;
+    s = reducer(s, { type: "ROLL_1", dice: asHand([2, 3, 4, 5, 6]) });
+    expect(s.rollId).toBe(before + 1);
+    expect(s.lastRolled).toEqual([true, true, true, true, true]);
+  });
+
+  it("Stay, holds, End Turn, and ignored rolls leave rollId alone", () => {
+    let s = dispatch(startGame("advanced", ["Ana", "Bob", "Cat"]), {
+      type: "ROLL_1",
+      dice: asHand([4, 4, 2, 3, 6]),
+    });
+    s = dispatch(
+      s,
+      { type: "TOGGLE_HOLD", index: 0 },
+      { type: "ROLL_1", dice: asHand([6, 6, 6, 6, 6]) },
+      { type: "STAY" },
+      { type: "ROLL_2", dice: asHand([6, 6, 6, 6, 6]) },
+      { type: "COMMIT_TURN" },
+    );
+    expect(s.rollId).toBe(1);
+  });
+
+  it("RESET zeroes rollId for a fresh game", () => {
+    let s = dispatch(startGame("advanced", ["Ana", "Bob", "Cat"]), {
+      type: "ROLL_1",
+      dice: asHand([2, 3, 4, 5, 6]),
+    });
+    s = dispatch(s, { type: "RESET" });
+    expect(s.rollId).toBe(0);
+  });
+});

@@ -34,7 +34,12 @@ export function ResultModal({
       participants.map((p) => p.displayName),
       loser.displayName,
     );
-    applyMutation(next, `${loser.displayName} now owes a shot.`, "game-result");
+    // applyGameResult adds one shot per player — a round.
+    applyMutation(
+      next,
+      `+${participants.length} shots on ${loser.displayName}'s tab.`,
+      "game-result",
+    );
     onResultApplied();
     // intentionally guarded by resultApplied; do not include roster/etc. in deps
     // eslint-disable-next-line react-hooks/exhaustive-deps

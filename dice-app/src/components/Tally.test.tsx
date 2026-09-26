@@ -79,7 +79,7 @@ describe("Tally — undo dismissal on mount", () => {
     );
     act(() => {
       const next = applyGameResult(ctxRef!.roster, ["Ana", "Bob"], "Bob");
-      ctxRef!.applyMutation(next, "Bob now owes a shot.", "game-result");
+      ctxRef!.applyMutation(next, "+2 shots on Bob's tab.", "game-result");
     });
     expect(screen.queryByText(/Undo/)).not.toBeNull();
     rerender(

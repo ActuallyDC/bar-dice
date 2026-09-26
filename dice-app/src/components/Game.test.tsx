@@ -54,6 +54,20 @@ const apply = (s: GameState, ...actions: GameAction[]) => actions.reduce(reducer
 const noop = () => {};
 const holdAll: GameAction[] = [0, 1, 2, 3, 4].map((index) => ({ type: "TOGGLE_HOLD", index }));
 
+describe("Game — hints", () => {
+  const roll1 = { type: "ROLL_1", dice: asHand([5, 5, 5, 2, 3]) } as const;
+
+  it("Auto names the 2nd Roll button", () => {
+    render(<Game state={apply(started("easy"), roll1)} dispatch={noop} />);
+    expect(screen.getByText("Optimal hold applied. 2nd Roll or Stay.")).toBeInTheDocument();
+  });
+
+  it("Manual names the 2nd Roll button", () => {
+    render(<Game state={apply(started("advanced"), roll1)} dispatch={noop} />);
+    expect(screen.getByText("Tap dice to hold them. Then 2nd Roll or Stay.")).toBeInTheDocument();
+  });
+});
+
 describe("Game — no spoilers while the dice tumble", () => {
   it("hides the score and locks the buttons until every die lands", async () => {
     stubAnimations();

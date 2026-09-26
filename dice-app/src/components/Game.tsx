@@ -154,7 +154,7 @@ export function Game({ state, dispatch, onCancelGame }: Props) {
             state.mode === "easy" &&
             state.turnPhase === "rolled1" &&
             !rolling && (
-              <Subtle>Optimal hold applied. Roll Again or Stay.</Subtle>
+              <Subtle>Optimal hold applied. 2nd Roll or Stay.</Subtle>
             )}
           {cannotBeatLeader && !rolling && (
             <p className="text-sm text-bar-ember text-center">
@@ -166,7 +166,7 @@ export function Game({ state, dispatch, onCancelGame }: Props) {
             state.mode === "advanced" &&
             state.turnPhase === "rolled1" &&
             !rolling && (
-              <Subtle>Tap dice to hold them. Then Roll Again or Stay.</Subtle>
+              <Subtle>Tap dice to hold them. Then 2nd Roll or Stay.</Subtle>
             )}
         </section>
       )}

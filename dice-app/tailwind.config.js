@@ -13,6 +13,8 @@ export default {
           mute: "#9c9aa3",
           amber: "#f5a524",
           amberDeep: "#c47a0c",
+          // amber/20 over panel2, opaque so a 3D die can't be seen through.
+          amberPanel: "#473722",
           ember: "#e0432a",
           emberDeep: "#9a2316",
           good: "#76d188",

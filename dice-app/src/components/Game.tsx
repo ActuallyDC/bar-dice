@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   activePlayerId,
   reducer,
@@ -27,12 +27,17 @@ export function Game({ state, dispatch, onCancelGame }: Props) {
     [state.players, activeId],
   );
 
-  // A monotonic key for the current turn — used to retrigger dice tumble.
-  const turnKey = `${state.context.kind}-${state.context.round ?? state.context.gameNumber ?? 0}-${state.inRollOff ? "ro" : "main"}-${state.poolIndex}-${state.turnPhase}`;
+  // The latest roll whose dice have all landed. Until they do, the result
+  // (score, hints, holds, buttons) stays hidden so the tumble isn't spoiled.
+  const [settledRollId, setSettledRollId] = useState(state.rollId);
+  // Same Players Again restarts rollId at 0 without remounting Game.
+  if (state.rollId < settledRollId) setSettledRollId(state.rollId);
+  const rolling =
+    state.rollId > settledRollId && state.lastRolled.some(Boolean);
 
   // Provide a stable score for the current dice (only meaningful after rolling).
   const liveScore =
-    state.turnPhase === "idle" ? null : scoreHand(state.dice);
+    state.turnPhase === "idle" || rolling ? null : scoreHand(state.dice);
 
   // Auto-mode courtesy warning: after the 1st Roll, if the optimal hold
   // can't beat the current leader even in the best case, surface it so
@@ -82,7 +87,7 @@ export function Game({ state, dispatch, onCancelGame }: Props) {
     <ScreenShell
       footer={
         showDice ? (
-          <ActionButtons state={state} dispatch={dispatch} />
+          <ActionButtons state={state} dispatch={dispatch} rolling={rolling} />
         ) : null
       }
     >
@@ -126,10 +131,14 @@ export function Game({ state, dispatch, onCancelGame }: Props) {
             interactive={
               state.mode === "advanced" &&
               !state.inRollOff &&
-              state.turnPhase === "rolled1"
+              state.turnPhase === "rolled1" &&
+              !rolling
             }
             onToggle={(i) => dispatch({ type: "TOGGLE_HOLD", index: i })}
-            rollKey={turnKey}
+            rollId={state.rollId}
+            rolled={state.lastRolled}
+            settling={rolling}
+            onSettled={setSettledRollId}
             stayed={state.stayedThisTurn}
             newlyMatched={state.newlyMatched}
           />
@@ -138,15 +147,16 @@ export function Game({ state, dispatch, onCancelGame }: Props) {
               {describeScore(liveScore)}
             </p>
           )}
-          {state.inRollOff && state.turnPhase !== "idle" && (
+          {state.inRollOff && state.turnPhase !== "idle" && !rolling && (
             <Subtle>Tiebreaker — one roll only.</Subtle>
           )}
           {!state.inRollOff &&
             state.mode === "easy" &&
-            state.turnPhase === "rolled1" && (
+            state.turnPhase === "rolled1" &&
+            !rolling && (
               <Subtle>Optimal hold applied. Roll Again or Stay.</Subtle>
             )}
-          {cannotBeatLeader && (
+          {cannotBeatLeader && !rolling && (
             <p className="text-sm text-bar-ember text-center">
               Best case here is {describeScore(cannotBeatLeader.max)} — won't
               beat {describeScore(cannotBeatLeader.leader)}.
@@ -154,7 +164,8 @@ export function Game({ state, dispatch, onCancelGame }: Props) {
           )}
           {!state.inRollOff &&
             state.mode === "advanced" &&
-            state.turnPhase === "rolled1" && (
+            state.turnPhase === "rolled1" &&
+            !rolling && (
               <Subtle>Tap dice to hold them. Then Roll Again or Stay.</Subtle>
             )}
         </section>
@@ -181,9 +192,12 @@ function ModeBadge({ mode }: { mode: GameMode }) {
 function ActionButtons({
   state,
   dispatch,
+  rolling,
 }: {
   state: GameState;
   dispatch: React.Dispatch<Parameters<typeof reducer>[1]>;
+  /** Dice still in the air — nothing to decide yet. */
+  rolling: boolean;
 }) {
   const phase = state.turnPhase;
   // Roll-off / tiebreaker: single roll, both modes.
@@ -199,7 +213,11 @@ function ActionButtons({
       );
     }
     return (
-      <Button fullWidth onClick={() => dispatch({ type: "COMMIT_TURN" })}>
+      <Button
+        fullWidth
+        disabled={rolling}
+        onClick={() => dispatch({ type: "COMMIT_TURN" })}
+      >
         End Turn
       </Button>
     );
@@ -224,11 +242,13 @@ function ActionButtons({
       <div className="grid grid-cols-2 gap-2">
         <Button
           variant="secondary"
+          disabled={rolling}
           onClick={() => dispatch({ type: "STAY" })}
         >
           Stay
         </Button>
         <Button
+          disabled={rolling}
           onClick={() => dispatch({ type: "ROLL_2", dice: roll5() })}
         >
           2nd Roll ({rerollLabel})
@@ -237,7 +257,11 @@ function ActionButtons({
     );
   }
   return (
-    <Button fullWidth onClick={() => dispatch({ type: "COMMIT_TURN" })}>
+    <Button
+      fullWidth
+      disabled={rolling}
+      onClick={() => dispatch({ type: "COMMIT_TURN" })}
+    >
       End Turn
     </Button>
   );
